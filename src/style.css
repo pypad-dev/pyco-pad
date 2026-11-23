@@ -1,0 +1,641 @@
+:root {
+  /* Two fonts only: one for the interface, one for code (editor, output, logo). */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; /* each platform's own UI font */
+  --font-code: 'Consolas', 'Monaco', 'Courier New', monospace;
+
+  /* Default Dark Theme */
+  --bg-main: #2e2e2e;
+  --bg-toolbar: #333333;
+  --bg-panel: #1e1e1e;
+  --bg-header: #252526;
+  --bg-resizer: #444444;
+  --bg-resizer-active: #0e639c;
+  
+  --text-main: #d4d4d4;
+  --text-header: #cccccc;
+  --text-title: #9cdcfe;
+  --text-line-num: #606060;
+  
+  --border-color: #333333;
+  --border-toolbar: #1e1e1e;
+  
+  --btn-bg: #3c3c3c;
+  --btn-bg-hover: #4c4c4c;
+  --btn-primary: #0e639c;
+  --btn-primary-hover: #1177bb;
+  
+  --output-error: #f48771;
+  --output-warning: #d7ba7d;
+  --focus-line: #4b6a88;
+  --bg-panel-focus: #232325;
+
+  --token-keyword: #569cd6;
+  --token-string: #ce9178;
+  --token-fstring: #f44747;
+  --token-comment: #6a9955;
+  --token-number: #b5cea8;
+  --token-decorator: #c586c0;
+
+  --editor-font-size: 11pt;
+
+  /* "python" matches the editor's keyword colour (print); "codepad" is a slightly dimmed Python yellow. */
+  --logo-py: var(--token-keyword);
+  --logo-pad: #E3BE3A; /* the Python yellow, dimmed slightly */
+}
+
+body.theme-light {
+  --output-error: #d13438;
+  --output-warning: #9a6700;
+  --focus-line: #8fb0cf;
+  --bg-panel-focus: #f7fafd;
+  --bg-main: #f3f3f3;
+  --bg-toolbar: #e0e0e0;
+  --bg-panel: #ffffff;
+  --bg-header: #f3f3f3;
+  --bg-resizer: #cccccc;
+  --bg-resizer-active: #007acc;
+  
+  --text-main: #333333;
+  --text-header: #333333;
+  --text-title: #005f9e;
+  --text-line-num: #999999;
+  
+  --border-color: #dddddd;
+  --border-toolbar: #cccccc;
+  
+  --btn-bg: #eeeeee;
+  --btn-bg-hover: #dddddd;
+  --btn-primary: #007acc;
+  --btn-primary-hover: #0062a3;
+  
+  --token-keyword: #0000ff;
+  --token-string: #a31515;
+  --token-fstring: #811f3f;
+  --token-comment: #008000;
+  --token-number: #098658;
+  --token-decorator: #267f99;
+
+  --logo-py: var(--token-keyword);
+  --logo-pad: #b45309; /* Darker amber for contrast on light background */
+}
+
+body.theme-hc {
+  --bg-main: #000000;
+  --bg-toolbar: #000000;
+  --bg-panel: #000000;
+  --bg-header: #000000;
+  --bg-resizer: #ffffff;
+  --bg-resizer-active: #ffcc00;
+  
+  --text-main: #ffffff;
+  --text-header: #ffffff;
+  --text-title: #ffcc00;
+  --text-line-num: #ffffff;
+  
+  --border-color: #ffffff;
+  --border-toolbar: #ffffff;
+  
+  --btn-bg: #000000;
+  --btn-bg-hover: #333333;
+  --btn-primary: #000000;
+  --btn-primary-hover: #333333;
+  
+  --output-warning: #ffff00;
+  --focus-line: #ffcc00;
+  --bg-panel-focus: #000000;
+  --token-keyword: #ffff00;
+  --token-string: #00ff00;
+  --token-fstring: #ff00ff;
+  --token-comment: #00ffff;
+  --token-number: #ffaa00;
+  --token-decorator: #ff0000;
+
+  --logo-py: #00ffff;
+  --logo-pad: #ffcc00;
+}
+
+/* --- GENERAL LAYOUT --- */
+body,
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* On body only: em is relative to the parent, so setting it on html as well would apply the size twice. */
+body { font-size: var(--editor-font-size); }
+
+/* Buttons and form controls do not inherit the page font by default. */
+button, input, select { font-family: inherit; }
+
+body.is-sync-enabled,
+body.is-embedded {
+  border-radius: 8px;
+}
+
+body.is-sync-enabled .main-toolbar,
+body.is-embedded .main-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+body.is-sync-enabled .container,
+body.is-embedded .container {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Main Toolbar */
+.main-toolbar {
+  min-height: 40px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  background-color: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border-toolbar);
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.main-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-family: var(--font-code);
+  font-weight: 400;
+  font-size: 1.05em;
+  letter-spacing: 0px;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.main-title:hover {
+  opacity: 0.85;
+}
+
+.main-title:focus-visible {
+  outline: 2px solid var(--logo-py);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.pyco-logo-py {
+  color: var(--logo-py);
+}
+.pyco-logo-pad {
+  color: var(--logo-pad);
+}
+
+.toolbar-left, .toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+#sync-status {
+  white-space: nowrap;
+  font-size: 0.85em;
+  color: var(--text-header);
+}
+#sync-status:empty { display: none; }
+
+/* The logo reads like a prompt line: >pythoncodepad_ with "python" in the keyword blue and "codepad" in yellow.
+   The > and _ are dimmed so the name stands out. */
+.pyco-gt { color: var(--logo-py); opacity: 0.75; }
+.pyco-us { color: var(--logo-pad); opacity: 0.75; }
+
+/* Narrow frames (the pad often sits in a quiz question): drop the button labels first, then shrink the logo
+   to a compact >_ (full strength, since they are then the whole logo), which still links to the same place. */
+@media (max-width: 575px) {
+  .btn-label { display: none; }
+}
+@media (max-width: 440px) {
+  .pyco-logo-py, .pyco-logo-pad { display: none; }
+  .pyco-gt, .pyco-us { opacity: 1; }
+}
+
+#sync-warning {
+  padding: 6px 12px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #fff;
+  background-color: #b42318;
+}
+#sync-warning[hidden] { display: none; }
+
+/* Container for Editor/Output/Resizer */
+.container {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+  position: relative;
+  flex-direction: row; /* Default Vertical Split */
+}
+
+/* --- PANELS --- */
+#editor-wrapper,
+#output-wrapper {
+  background-color: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-basis: 50%;
+  flex-grow: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Resizer Handle */
+.resizer {
+  position: relative;
+  background-color: var(--bg-resizer);
+  color: var(--text-header);
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background-color 0.2s;
+}
+.resizer:hover, .resizer.active {
+  background-color: var(--bg-resizer-active);
+}
+
+/* A brighter segment in the middle shows the divider can be dragged. */
+.resizer::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background-color: currentColor;
+  opacity: 0.55;
+}
+.resizer:hover::before, .resizer.active::before { opacity: 1; }
+
+/* The bar is thin, but the area that grabs it extends a few pixels into the panels on each side. */
+.resizer::after {
+  content: '';
+  position: absolute;
+}
+
+.container.vertical-split { flex-direction: row; }
+.container.vertical-split .resizer {
+  width: 3px;
+  height: 100%;
+  cursor: col-resize;
+}
+.container.vertical-split .resizer::before { width: 3px; height: 28px; }
+.container.vertical-split .resizer::after { top: 0; bottom: 0; left: -3px; right: -3px; }
+
+.container.horizontal-split { flex-direction: column; }
+.container.horizontal-split .resizer {
+  width: 100%;
+  height: 3px;
+  cursor: row-resize;
+}
+.container.horizontal-split .resizer::before { width: 28px; height: 3px; }
+.container.horizontal-split .resizer::after { left: 0; right: 0; top: -3px; bottom: -3px; }
+
+/* Stacked view: height is scarce and width is not, so the OUTPUT label and its buttons sit in a rail beside the
+   output instead of a bar above it. Side by side keeps the bar, because there width matters more. */
+.container.horizontal-split #output-wrapper { flex-direction: row; transition: flex-basis 0.2s ease; }
+.container.horizontal-split #output-wrapper .panel-header {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border-bottom: 0;
+  border-right: 1px solid var(--border-color);
+}
+.container.horizontal-split #output-wrapper .panel-header > span { display: flex; align-items: center; height: 24px; padding: 0 8px; }
+.container.horizontal-split #output-wrapper .panel-controls { flex-direction: column; align-self: stretch; }
+.container.horizontal-split #output-wrapper .panel-controls .btn-sm { height: 24px; padding: 0 8px; justify-content: flex-start; }
+.container.dragging #output-wrapper { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .container.horizontal-split #output-wrapper { transition: none; }
+}
+
+.container.output-hidden #output-wrapper { display: none; }
+.container.output-hidden .resizer { display: none; }
+.container.output-hidden #editor-wrapper { flex-basis: 100%; max-width: 100%; height: 100%; }
+
+
+.panel-header {
+  background-color: var(--bg-header);
+  padding: 0 15px;
+  box-sizing: border-box;
+  min-height: 25px; /* 24px of bar plus its border: the CODE and OUTPUT bars match, and Clear/Close get a 24px target */
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-header);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-controls {
+  display: flex;
+  gap: 0;
+  align-self: stretch;
+  align-items: stretch;
+}
+
+/* Clear and Close have no visible boundary until hovered, but each is as tall as the whole bar to click. */
+.panel-controls .btn-sm {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 0;
+  padding: 0 10px;
+}
+.panel-controls .btn-sm:hover { background-color: var(--btn-bg-hover); }
+
+#custom-editor-container {
+  display: flex;
+  flex-grow: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+#line-numbers {
+  width: auto;
+  min-width: calc(2ch + 11px); /* two digits plus equal padding either side and the 1px border; grows beyond 99 lines */
+  height: 100%;
+  background-color: var(--bg-panel);
+  border-right: 1px solid var(--border-color);
+  text-align: right;
+  padding: 9px 5px 15px;
+  box-sizing: border-box;
+  color: var(--text-line-num);
+  font-family: var(--font-code);
+  font-size: 1em;
+  line-height: 1.5;
+  overflow: hidden;
+  flex-shrink: 0;
+  user-select: none;
+  white-space: pre;
+}
+
+#code-overlay-wrapper {
+  flex-grow: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+#highlighting,
+#editing {
+  margin: 0;
+  padding: 9px 5px 15px; /* 40% less space above the first line; the same on the line numbers so the rows stay aligned */
+  border: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  font-family: var(--font-code);
+  font-size: 1em;
+  line-height: 1.5;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+}
+
+#highlighting {
+  z-index: 1;
+  background-color: var(--bg-panel);
+  pointer-events: none;
+}
+
+#highlighting code { font-family: inherit; }
+
+/* Text for assistive technology only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#editing {
+  z-index: 2;
+  color: transparent;
+  background: transparent;
+  caret-color: var(--text-main);
+  outline: none;
+  resize: none;
+}
+
+#editing::placeholder {
+  color: var(--token-comment);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+/* SYNTAX HIGHLIGHTING COLORS */
+.token-keyword { color: var(--token-keyword); }
+.token-string { color: var(--token-string); }
+.token-fstring { color: var(--token-fstring); }
+.token-comment { color: var(--token-comment); font-style: italic; }
+.token-number { color: var(--token-number); }
+.token-decorator { color: var(--token-decorator); }
+
+/* Buttons */
+button {
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-main);
+  background-color: var(--btn-bg);
+}
+
+body.theme-hc button {
+  border-color: var(--text-main);
+}
+
+button:hover { background-color: var(--btn-bg-hover); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toolbar-actions button { white-space: nowrap; flex: none; height: 28px; }
+#layout-icon { display: inline-flex; } /* an svg, so every layout icon is exactly the same height */
+.btn-run { background-color: var(--btn-primary); color: #fff; border-color: transparent; padding: 5px 10px; }
+.btn-run:hover { background-color: var(--btn-primary-hover); }
+
+/* Pressed feedback; the hover colour is defined above. */
+.btn-run:active { filter: brightness(0.8); }
+
+body.theme-hc .btn-run { color: #fff; border: 1px solid #fff; }
+
+.btn-sm { padding: 2px 8px; font-size: 0.8em; }
+
+.safe-mode-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8em;
+  color: var(--text-header);
+  cursor: pointer;
+  margin-right: 10px;
+  user-select: none;
+}
+
+#output[hidden], #notes-pane[hidden], #btn-notes[hidden], .panel-controls .btn-sm[hidden] { display: none; }
+#btn-notes[aria-pressed="true"] { background-color: var(--btn-bg-hover); }
+
+#notes-pane { flex: 1 1 0; display: flex; flex-direction: column; min-width: 0; min-height: 0; background-color: var(--bg-panel); }
+/* Where the cursor is shows quietly: the code's line numbers and gutter edge brighten, and the notes' bar edge and
+   background lift. No outline, so nothing is bright. High contrast keeps a plain outline. */
+#editor-wrapper:focus-within #line-numbers { color: var(--text-header); border-right-color: var(--focus-line); }
+#output-wrapper:focus-within .panel-header { border-color: var(--focus-line); }
+#notes-pane:focus-within, #notes-pane:focus-within #notes { background-color: var(--bg-panel-focus); }
+body.theme-hc #notes:focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; }
+#notes-count { flex: none; padding: 2px 15px 6px; font-size: 0.8em; text-align: right; color: var(--output-warning); }
+#notes-count[hidden] { display: none; }
+/* No wrapping, so each row is one real line, as in the code editor. */
+#notes {
+  outline: none;
+  white-space: pre;
+  overflow: auto;
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: none;
+  border: 0;
+  padding: 15px;
+  font-family: var(--font-code);
+  font-size: 1em;
+  color: var(--text-main);
+  background-color: var(--bg-panel);
+}
+.output-stale { display: block; margin-bottom: 8px; font-style: italic; color: var(--output-warning); }
+
+#output {
+  flex-grow: 1;
+  padding: 15px;
+  font-family: var(--font-code);
+  font-size: 1em;
+  white-space: pre-wrap;
+  overflow-y: auto;
+  color: var(--text-main);
+  background-color: var(--bg-panel);
+}
+
+.output-error { color: #f48771; }
+.output-success { color: #4ec9b0; font-style: italic; font-size: 1em; margin-top: 10px; display: block; }
+
+body.theme-light .output-error { color: #d13438; }
+body.theme-light .output-success { color: #107c41; }
+body.theme-hc .output-error { color: #ff0000; }
+body.theme-hc .output-success { color: #00ff00; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-panel); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 5px; }
+
+/* Modal Settings */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: transparent;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+body.theme-hc .modal-content { border: 2px solid #fff; }
+
+.modal-header {
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-header h3 { margin: 0; font-size: 1em; color: var(--text-main); }
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 1.2em;
+  color: var(--text-main);
+  padding: 0;
+}
+.btn-close:hover { color: #f48771; background: transparent; }
+
+.modal-body {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.setting-group label {
+  font-size: 0.85em;
+  color: var(--text-header);
+}
+
+.setting-group select {
+  padding: 6px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+.font-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.font-size-controls span {
+  font-size: 1em;
+  color: var(--text-main);
+}

@@ -1,0 +1,78 @@
+name: Release
+
+# Tag a commit "pad-v1.0.2" to publish /v1.0.2/ (never changes afterwards) and move /v1.0/, /v1/ and /latest/ forward.
+# Tag "pad-v1.0.2-rc.1" to publish a candidate at /v1.0.2-rc.1/ and /latest-rc/ only (nothing else moves, and it is not remembered: the next release leaves it out).
+# `npm run release -- 1.0.2` runs the checks on your own computer and only tags if they pass (scripts/release.mjs, docs/RELEASING.md).
+# Earlier releases are kept on the `releases` branch (built files only) and published again with every release, because each
+# Cloudflare Pages deployment replaces the whole site. The site root is the original site from before releases (site-legacy/), and never changes.
+#
+# One-time setup in the repository settings:
+#   secrets   CLOUDFLARE_API_TOKEN (Pages: edit), CLOUDFLARE_ACCOUNT_ID
+#   variable  CLOUDFLARE_PAGES_PROJECT (the Pages project name, e.g. pyco-pad)
+#   variable  PYCOPAD_SITE (optional: the site's address, if not https://pyco-pad.pages.dev)
+
+on:
+  push:
+    tags: ['pad-v*']
+
+permissions:
+  contents: write
+
+concurrency: release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SITE: ${{ vars.PYCOPAD_SITE || 'https://pyco-pad.pages.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Version from the tag
+        run: echo "VERSION=${GITHUB_REF_NAME#pad-v}" >> "$GITHUB_ENV"
+      - name: Type check, tests, build
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Earlier releases
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          if git ls-remote --exit-code --heads origin releases >/dev/null; then
+            git clone --depth 1 --branch releases "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" releases-checkout
+          fi
+      - name: Assemble the site (fails if this version already exists)
+        run: node scripts/assemble-site.mjs --version "$VERSION" --dist dist --releases releases-checkout --out site
+      - name: Publish
+        run: npx wrangler pages deploy site --project-name "${{ vars.CLOUDFLARE_PAGES_PROJECT }}" --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Check the release is really live
+        # Pages answers an unknown address with the home page, so a plain "200" proves nothing: ask for a script and check it is one
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            type=$(curl -s -o /dev/null -w '%{content_type}' "$SITE/v$VERSION/pycopad-mdl-quiz.js" || true)
+            case "$type" in *javascript*) echo "v$VERSION is live"; exit 0;; esac
+            echo "not yet ($type)"; sleep 15
+          done
+          echo "v$VERSION did not appear on $SITE"; exit 1
+      - name: Remember this release
+        if: ${{ !contains(env.VERSION, '-rc.') }}
+        run: |
+          rm -rf releases-new && mkdir releases-new
+          for folder in site/v* site/latest site/latest-rc; do
+            if [ -d "$folder" ]; then cp -R "$folder" releases-new/; fi
+          done
+          cd releases-new
+          git init -q -b releases
+          git config user.name "release"; git config user.email "release@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Releases up to $VERSION"
+          git push --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" releases

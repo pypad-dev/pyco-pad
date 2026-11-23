@@ -1,0 +1,8 @@
+node_modules/
+dist/
+old/
+.DS_Store
+site/
+releases-checkout/
+# Copied from the pinned lms-widget-manager by `npm install` (postinstall)
+public/lms-widget-manager.iife.js
