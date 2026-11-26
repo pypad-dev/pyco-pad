@@ -4,7 +4,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { isCandidate, parseVersion } from './release-lib.mjs';
 
-const SITE = process.env.PYCOPAD_SITE || 'https://pyco-pad.pages.dev';
+const SITE = process.env.PYCOPAD_SITE || 'https://pythoncodepad.com';
 const PREFIX = 'pad-v';
 const args = process.argv.slice(2);
 const dry = args.includes('--dry');

@@ -2,7 +2,7 @@
   console.warn('[PycoPad] You are loading embed.js, which is deprecated. It is automatically loading pycopad-mdl-quiz.js for backwards compatibility. Please update your embed codes to point to pycopad-mdl-quiz.js directly.');
   
   const currentScript = document.currentScript;
-  let base = 'https://pyco-pad.pages.dev';
+  let base = 'https://pythoncodepad.com';
   if (currentScript && currentScript.src) {
     try {
       base = new URL('.', currentScript.src).href.replace(/\/$/, '');

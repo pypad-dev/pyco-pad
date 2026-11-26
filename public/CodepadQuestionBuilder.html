@@ -157,7 +157,7 @@
     <h2 id="settings-title" style="font-size:1.05rem;margin:0 0 8px">Settings</h2>
     <div class="row">
       <div class="field"><label for="origin">PycoPad site</label>
-        <input id="origin" value="https://pyco-pad.pages.dev"></div>
+        <input id="origin" value="https://pythoncodepad.com"></div>
       <div class="field"><label for="version">PycoPad version</label>
         <select id="version"></select></div>
       <div class="field"><label for="strategy">PycoPad replaces the answer box</label>
@@ -450,7 +450,7 @@ function previewDoc(q, settings, number) {
   qstyle.textContent = questionCss('#qwrap');
   document.head.append(qstyle);
   var SETTING_KEYS = ['category', 'tags', 'origin', 'version', 'strategy', 'format'];
-  var state = { questions: [], settings: { category: '', tags: '', origin: 'https://pyco-pad.pages.dev', version: null, versionAuto: true, strategy: 'default', format: 'monospaced' } };
+  var state = { questions: [], settings: { category: '', tags: '', origin: 'https://pythoncodepad.com', version: null, versionAuto: true, strategy: 'default', format: 'monospaced' } };
   var active = 0;
   var tab = 'edit';
 

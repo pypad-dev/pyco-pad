@@ -1,0 +1,9 @@
+// The site is a Cloudflare Worker with static assets: the folder `site/` that scripts/assemble-site.mjs builds
+// (the frozen original site at the root, then every release folder). `npx wrangler deploy` publishes it, and the
+// route below attaches pythoncodepad.com to it. An address that is not in the site answers 404. docs/RELEASING.md.
+{
+  "name": "pycopad",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./site" },
+  "routes": [{ "pattern": "pythoncodepad.com", "custom_domain": true }]
+}

@@ -7,7 +7,7 @@ A small Python code pad (Skulpt, in the browser) that can replace the answer box
 Add to the question text (the question builder, `/CodepadQuestionBuilder.html`, writes it for you):
 
 ```html
-<script src="https://pyco-pad.pages.dev/v1.0/pycopad-mdl-quiz.js" data-create-pad data-strategy="default"></script>
+<script src="https://pythoncodepad.com/v1.0/pycopad-mdl-quiz.js" data-create-pad data-strategy="default"></script>
 ```
 
 The essay question's response format must be "Plain text" (or "Plain text, monospaced font"), and Moodle must allow scripts in question text.

@@ -1,6 +1,6 @@
 # Releasing
 
-`npm run release -- <version>` runs the checks on this computer, and only if they all pass tags the commit (`pad-v<version>`) and pushes the tag. GitHub then builds it and publishes it to Cloudflare Pages (about a minute: `.github/workflows/release.yml`).
+`npm run release -- <version>` runs the checks on this computer, and only if they all pass tags the commit (`pad-v<version>`) and pushes the tag. GitHub then builds it and publishes it to Cloudflare (about a minute: `.github/workflows/release.yml`).
 
 ```bash
 cd ~/pynote/pyco-pad-main
@@ -34,12 +34,14 @@ A candidate (`1.0.1-rc.1`) is published at its own folder and `/latest-rc/` only
 
 ## How it works
 
-`scripts/release-lib.mjs` decides which folders a version writes (tested in `tests/release.test.ts`; the same rules as PyPad's). `scripts/assemble-site.mjs` puts the site together: `site-legacy/` at the root, every earlier release (from the `releases` branch, built files only), and the new one. Each Cloudflare Pages deployment replaces the whole site, which is why the earlier releases are kept on that branch and published again each time. `site-legacy/` must never be edited.
+`scripts/release-lib.mjs` decides which folders a version writes (tested in `tests/release.test.ts`; the same rules as PyPad's). `scripts/assemble-site.mjs` puts the site together: `site-legacy/` at the root, every earlier release (from the `releases` branch, built files only), and the new one. Each Cloudflare deployment replaces the whole site, which is why the earlier releases are kept on that branch and published again each time. `site-legacy/` must never be edited.
 
 The lms-widget-manager is pinned in `package.json` (`github:pypad-dev/lms-widget-manager#v1.1.0`); `npm install` builds it and copies it into `public/`, and each release ships the copy it was built with. To move to a newer manager, change the tag, run `npm install`, and release.
 
 ## One-time setup
 
-In the GitHub repository's settings: secrets `CLOUDFLARE_API_TOKEN` (a token with Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID`; variable `CLOUDFLARE_PAGES_PROJECT` (the Pages project name). If the site is not `https://pyco-pad.pages.dev`, also the variable `PYCOPAD_SITE` (and `PYCOPAD_SITE=... npm run release` for the message it prints).
+The site is a Cloudflare Worker with static assets (`wrangler.jsonc`: the Worker `pycopad`, serving the folder `site/`, on the domain `pythoncodepad.com`). `npx wrangler deploy` makes the Worker the first time and updates it after, and attaches the domain, so there is no project to create by hand. The domain's zone must be in the same Cloudflare account.
 
-The Pages project must accept uploads (Direct Upload). A project that Cloudflare builds from a GitHub repository by itself cannot take them: then make a new Pages project for uploads and move the custom domain (if any) to it.
+In the GitHub repository's settings: secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The token needs the "Edit Cloudflare Workers" template, plus permission on the domain's zone (Workers Routes: Edit, and DNS: Edit, so the custom domain can be attached). If the site is not `https://pythoncodepad.com`, also the variable `PYCOPAD_SITE` (and `PYCOPAD_SITE=... npm run release` for the message it prints).
+
+The older site, `https://pyco-pad.pages.dev`, is a separate Pages project that Cloudflare builds from another repository. Leave it as it is: questions written before versions load from it, and it keeps working. The new site also holds the same frozen files at its root.

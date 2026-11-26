@@ -1,6 +1,6 @@
 (function () {
   const currentScript = document.currentScript;
-  let defaultBase = 'https://pyco-pad.pages.dev';
+  let defaultBase = 'https://pythoncodepad.com';
   if (currentScript && currentScript.src) {
     try {
       defaultBase = new URL('.', currentScript.src).href.replace(/\/$/, '');
