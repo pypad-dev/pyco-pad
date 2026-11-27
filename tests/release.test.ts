@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { planRelease, parseVersion, isReleaseFolder, isCandidate, versionsList } from '../scripts/release-lib.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { SITE_HEADERS, planRelease, parseVersion, isReleaseFolder, isCandidate, versionsList } from '../scripts/release-lib.mjs';
 
 describe('release plan', () => {
     it('the first release makes its own folder, its minor\'s and the major', () => expect(planRelease([], '1.0.0').write).toEqual(['v1.0.0', 'v1.0', 'v1', 'latest', 'latest-rc']));
@@ -41,4 +45,17 @@ describe('the lists of releases', () => {
     it('no candidate once its release is out', () => expect(versionsList(['v0.4.0-rc.12', 'v0.4.0', 'v0.3.1']).candidate).toBeNull());
     it('a candidate sorts before its release and after the one before', () => expect(versionsList(['v1.0.0', 'v1.0.1-rc.2', 'v1.0.1-rc.10', 'v1.0.1']).releases).toEqual(['v1.0.1', 'v1.0.1-rc.10', 'v1.0.1-rc.2', 'v1.0.0']));
     it('with only candidates, latest is the newest of them', () => expect(versionsList(['v1.0.0-rc.1']).latest).toBe('v1.0.0-rc.1'));
+});
+
+describe('site headers', () => {
+    it('lets any page read the list of versions, and nothing else', () => {
+        expect(SITE_HEADERS).toBe('/versions.json\n  Access-Control-Allow-Origin: *\n');
+    });
+    it('is written to the root of the assembled site', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'site-'));
+        mkdirSync(join(dir, 'dist'));
+        writeFileSync(join(dir, 'dist', 'pycopad-mdl-quiz.js'), '// stub');
+        execFileSync('node', ['scripts/assemble-site.mjs', '--version', '1.0.0', '--dist', join(dir, 'dist'), '--releases', join(dir, 'none'), '--out', join(dir, 'site')], { stdio: 'pipe' });
+        expect(readFileSync(join(dir, 'site', '_headers'), 'utf8')).toBe(SITE_HEADERS);
+    });
 });

@@ -6,7 +6,7 @@
 // changes: Moodle questions written before then load it from there. New questions load a version folder (/v1.0/pycopad-mdl-quiz.js).
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { isReleaseFolder, planRelease, versionsList } from './release-lib.mjs';
+import { SITE_HEADERS, isReleaseFolder, planRelease, versionsList } from './release-lib.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []));
 const { version, dist = 'dist', releases = 'releases', out = 'site', legacy = 'site-legacy' } = args;
@@ -29,6 +29,7 @@ for (const [name, from] of fill) cpSync(join(out, from), join(out, name), { recu
 
 const folders = [...new Set([...earlier, ...write, ...fill.map(([name]) => name)])].sort();
 writeFileSync(join(out, 'versions.json'), JSON.stringify(versionsList(folders), null, 2) + '\n');
+writeFileSync(join(out, '_headers'), SITE_HEADERS);
 
 // A plain list of every published version, for anyone who needs an exact address
 mkdirSync(join(out, 'releases'), { recursive: true });

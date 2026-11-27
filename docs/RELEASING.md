@@ -24,7 +24,7 @@ Before running it: commit and push everything. It stops if there are uncommitted
 | `/v1.0.1-rc.1/`, `/latest-rc/` | candidates | trying what is coming, in Moodle, before releasing it |
 | `/` (the site root) | the original site from before versions (15 September 2026, kept in `site-legacy/`), and never changes | questions written before versions, which load `/pycopad-mdl-quiz.js` |
 
-A question loads `<address>/pycopad-mdl-quiz.js`; everything else (the editor page, the lms-widget-manager, the toggle plugin) comes from the same folder, so a question gets exactly the release it names. `/versions.json` lists the releases (the question builder reads it to offer them), and `/releases/` is a page that lists them.
+A question loads `<address>/pycopad-mdl-quiz.js`; everything else (the editor page, the lms-widget-manager, the toggle plugin) comes from the same folder, so a question gets exactly the release it names. `/versions.json` lists the releases (the question builder reads it to offer them), and `/releases/` is a page that lists them. `/versions.json` can be read from any address (`_headers`, written by `scripts/assemble-site.mjs`), so a copy of the question builder saved on a computer still offers the versions.
 
 Numbering: a fix is a patch (1.0.1); anything that could change how an existing question behaves or looks is a new minor (1.1.0), so courses on `/v1.0/` do not get it until they choose to.
 

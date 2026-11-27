@@ -56,6 +56,14 @@ export function planRelease(existing, version) {
     return { write, fill: fillFor(minor) };
 }
 
+/**
+ * Cloudflare's headers file, at the site's root. The list of versions is public, and the question builder reads it from the site; a copy of the
+ * builder opened from a file (or from another address) can only read it if the site allows that.
+ */
+export const SITE_HEADERS = `/versions.json
+  Access-Control-Allow-Origin: *
+`;
+
 /** The folder names that are releases (everything else in the releases area is left alone). */
 export const isReleaseFolder = (name) => /^v\d+(\.\d+(\.\d+(-rc\.\d+)?)?)?$/.test(name) || name === 'next' || name === LATEST_RC || name === LATEST;
 
