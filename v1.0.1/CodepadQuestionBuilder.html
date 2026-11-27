@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moodle Codepad Question Editor</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --ink:#1f2328; --muted:#656d76; --line:#d0d7de; --accent:#0e639c; --danger:#b42318; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16181d; --card:#1f232a; --ink:#e6e8eb; --muted:#9aa4b0; --line:#363c46; --accent:#4aa3df; --danger:#f2766b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .topbar { position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--line); margin-bottom:10px; }
+  .topbar .in { max-width:1260px; margin:0 auto; padding:5px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .topbar h1 { font-size:1.05rem; margin:0 8px 0 0; }
+  .topbar #status { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar .sp { flex:0 0 0; }
+  .topbar .sp { flex:1; }
+  .layout { display:flex; gap:12px; align-items:flex-start; max-width:1260px; margin:0 auto; padding:0 16px 16px; }
+  .layout main { flex:1; min-width:0; }
+  fieldset, .card, details.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:0 0 10px; }
+  fieldset { min-width:0; }
+  legend, summary { font-weight:600; padding:0 6px; }
+  summary { cursor:pointer; padding:0; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .field { display:flex; flex-direction:column; gap:1px; flex:1 1 160px; min-width:0; }
+  .field.wide { flex-basis:100%; }
+  label { font-size:.85rem; color:var(--muted); }
+  input, select, textarea { font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:6px; padding:3px 6px; width:100%; }
+  textarea { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.9rem; resize:vertical; }
+  input:focus, select:focus, textarea:focus, button:focus-visible, [role=tab]:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:6px; padding:3px 10px; }
+  button:disabled { opacity:.45; cursor:default; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.danger { color:var(--danger); }
+  #qpanel { scroll-margin-top:52px; }
+  .qnav { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:8px; }
+  .qnav .pos { font-weight:600; margin:0 2px; white-space:nowrap; }
+  .qnav .sp { flex:1; }
+  .qcat { display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-bottom:6px; }
+  .qcat label { font-size:.85rem; color:var(--muted); white-space:nowrap; }
+  .qcat input { flex:1; min-width:0; max-width:340px; }
+  hr.qrule { border:0; border-top:1px solid var(--line); margin:0 0 8px; }
+  #qwrap { container-type:inline-size; }
+  #qwrap textarea.grow { overflow:hidden; resize:none; }
+  pre#snippet { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin:0; white-space:pre-wrap; word-break:break-all; font-size:.8rem; user-select:all; }
+  .tabs { display:flex; margin:0 6px; }
+  [role=tab] { border-radius:0; background:transparent; }
+  [role=tab]:first-child { border-radius:6px 0 0 6px; }
+  [role=tab]:last-child { border-radius:0 6px 6px 0; margin-left:-1px; }
+  [role=tab][aria-selected=true] { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  iframe#pv { width:100%; border:1px solid var(--line); border-radius:6px; background:#fff; min-height:120px; display:block; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
+  pre#out { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; max-height:360px; font-size:.8rem; }
+  .err { color:var(--danger); font-size:.85rem; margin:0 0 8px; }
+  .err:empty { display:none; }
+  .hint { font-size:.8rem; color:var(--muted); }
+  nav#toc { flex:0 0 250px; position:sticky; top:48px; max-height:calc(100vh - 58px); overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 8px; }
+  nav#toc h2 { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 4px; }
+  nav#toc ol { list-style:none; margin:0 0 6px; padding:0; }
+  nav#toc li { display:flex; align-items:center; gap:2px; border-radius:4px; position:relative; }
+  nav#toc li.dragging { opacity:.4; }
+  nav#toc li.over-before { box-shadow:0 -2px 0 var(--accent); }
+  nav#toc li.over-after { box-shadow:0 2px 0 var(--accent); }
+  nav#toc .grip { cursor:grab; color:var(--muted); padding:0 2px; user-select:none; }
+  nav#toc li button.sel { flex:1; min-width:0; text-align:left; border:0; background:transparent; padding:2px 6px; border-radius:4px; display:flex; gap:6px; align-items:baseline; }
+  nav#toc li button.sel:hover { background:var(--bg); }
+  nav#toc li button.sel[aria-current="true"] { background:var(--accent); color:#fff; }
+  nav#toc li button.mv { border:0; background:transparent; color:var(--muted); padding:2px 5px; line-height:1; }
+  nav#toc li button.mv:hover:not(:disabled) { background:var(--bg); color:var(--ink); }
+  nav#toc .n { color:var(--muted); font-size:.8rem; min-width:1.6em; }
+  nav#toc [aria-current="true"] .n { color:inherit; }
+  nav#toc .id { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  nav#toc .tag { font-size:.7rem; opacity:.8; }
+  nav#toc .bad { color:var(--danger); font-weight:700; }
+  nav#toc [aria-current="true"] .bad { color:#fff; }
+  nav#toc .tools { display:grid; grid-template-columns:1fr 1fr; gap:6px; border-top:1px solid var(--line); padding-top:6px; }
+  dialog { background:var(--card); color:var(--ink); border:1px solid var(--line); border-radius:8px; max-width:560px; width:calc(100% - 32px); }
+  dialog::backdrop { background:rgba(0,0,0,.4); }
+  dialog form > * { margin-bottom:10px; }
+  .dlg-actions { display:flex; gap:8px; justify-content:flex-end; }
+  @media (max-width: 820px) { .layout { flex-direction:column; } nav#toc { position:static; flex:none; width:100%; max-height:200px; } }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="in">
+    <h1>Moodle Codepad Question Editor</h1>
+    <button id="btn-import">Import&hellip;</button>
+    <button id="btn-export" class="primary">Export&hellip;</button>
+    <span id="status" class="hint" role="status" aria-live="polite"></span>
+    <span class="sp"></span>
+    <button id="btn-settings">Settings&hellip;</button>
+    <input type="file" id="file" accept=".xml,.json,application/json,text/xml,application/xml" hidden>
+  </div>
+</header>
+<div class="layout">
+<nav id="toc" aria-label="Questions">
+  <h2 title="Drag to reorder, or use the arrows">Questions <span class="hint" style="text-transform:none;letter-spacing:0">&middot; drag or &uarr;&darr;</span></h2>
+  <ol id="toc-list"></ol>
+  <div class="tools">
+    <button id="toc-add" class="primary" title="New question after the current one">New</button>
+    <button id="toc-clone" title="Copy the current question">Duplicate</button>
+    <button id="toc-del" class="danger" title="Delete the current question">Delete</button>
+    <button id="toc-reindex">Reindex&hellip;</button>
+  </div>
+</nav>
+<main>
+
+  <section class="card" id="qpanel" aria-label="Question">
+    <div class="qcat" title="Questions import under this name in the question bank (created if missing; use Parent/Child for a subcategory). Tick &quot;Get category from file&quot; when importing.">
+      <label for="category">Question bank category / group</label>
+      <input id="category" placeholder="e.g. Python/Week 3">
+      <label for="tags" title="Added to every question; each question can add its own under More options">Tags</label>
+      <input id="tags" placeholder="comma separated, for all questions">
+    </div>
+    <div class="qnav">
+      <button id="prev" aria-label="Previous question">&lsaquo; Prev</button>
+      <span class="pos" id="pos" aria-live="polite"></span>
+      <button id="next" aria-label="Next question">Next &rsaquo;</button>
+      <div class="tabs" role="tablist" aria-label="Question view">
+        <button role="tab" id="tab-edit" aria-controls="pane-edit" aria-selected="true">Edit</button>
+        <button role="tab" id="tab-preview" aria-controls="pane-preview" aria-selected="false" tabindex="-1">Preview</button>
+      </div>
+      <button id="pv-refresh" hidden title="Loads PycoPad from the PycoPad site and MathJax from cdnjs. The answer box is not saved.">Refresh</button>
+    </div>
+
+    <hr class="qrule">
+
+    <div id="empty" hidden>
+      <p>No questions yet.</p>
+    </div>
+
+    <div id="qbody" hidden>
+      <div id="pane-edit" role="tabpanel" aria-labelledby="tab-edit">
+        <div id="qwrap"><div class="que essay" id="fields"></div></div>
+      </div>
+      <div id="pane-preview" role="tabpanel" aria-labelledby="tab-preview" hidden>
+        <iframe id="pv" title="Question preview" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <div id="errors" class="err" role="alert"></div>
+
+  <details class="card">
+    <summary>XML preview</summary>
+    <pre id="out" tabindex="0"></pre>
+  </details>
+</main>
+</div>
+
+<dialog id="settings-dlg" aria-labelledby="settings-title">
+  <form method="dialog">
+    <h2 id="settings-title" style="font-size:1.05rem;margin:0 0 8px">Settings</h2>
+    <div class="row">
+      <div class="field"><label for="origin">PycoPad site</label>
+        <input id="origin" value="https://pythoncodepad.com"></div>
+      <div class="field"><label for="version">PycoPad version</label>
+        <select id="version"></select></div>
+      <div class="field"><label for="strategy">PycoPad replaces the answer box</label>
+        <select id="strategy">
+          <option value="default">Immediately</option>
+          <option value="toggle">After a "Switch" button</option>
+        </select></div>
+      <div class="field"><label for="format">Moodle answer box</label>
+        <select id="format">
+          <option value="monospaced">Plain text, monospaced</option>
+          <option value="plain">Plain text</option>
+        </select></div>
+    </div>
+    
+    <p class="hint" style="margin-bottom:4px">Added to the question text of every PycoPad question:</p>
+    <pre id="snippet"></pre>
+    <p class="hint">Version: a minor's folder (such as v1.0) gets that minor's fixes and nothing that could change how a question behaves, so it suits a course; an exact version (v1.0.0) never changes, for an exam. Questions keep the version they were exported with.</p>
+    <p class="hint">PycoPad needs a plain-text answer box so the student's code is stored as typed, and Moodle must allow scripts in question text.</p>
+  
+    <div class="dlg-actions">
+      <button type="button" id="clear" class="danger" style="margin-right:auto">Clear all questions</button>
+      <button type="submit" class="primary">Done</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="export-dlg" aria-labelledby="export-title">
+  <form method="dialog">
+    <h2 id="export-title" style="font-size:1.05rem;margin:0 0 8px">Export</h2>
+    <div class="actions" style="flex-direction:column;align-items:stretch">
+      <button type="button" id="ex-xml" class="primary">Download Moodle XML (.xml)</button>
+      <button type="button" id="ex-copy">Copy Moodle XML</button>
+      <button type="button" id="ex-json">Download question set (.json) &ndash; to edit again later</button>
+    </div>
+    <p class="hint">The set is also saved automatically in this browser.</p>
+    <div class="dlg-actions"><button type="submit">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="import-dlg" aria-labelledby="import-title">
+  <form method="dialog">
+    <h2 id="import-title" style="font-size:1.05rem;margin:0 0 8px">Import</h2>
+    <p id="import-msg"></p>
+    <div class="dlg-actions">
+      <button type="button" id="im-cancel">Cancel</button>
+      <button type="button" id="im-add">Add to the end</button>
+      <button type="button" id="im-replace" class="primary">Replace all</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="reindex-dlg" aria-labelledby="reindex-title">
+  <form method="dialog" id="reindex-form">
+    <h2 id="reindex-title" style="font-size:1.05rem;margin:0 0 8px">Reindex question IDs</h2>
+    <div class="row">
+      <div class="field"><label for="ri-prefix">Prefix</label><input id="ri-prefix" value="Q"></div>
+      <div class="field"><label for="ri-start">Start at</label><input id="ri-start" type="number" min="0" step="1" value="1"></div>
+      <div class="field"><label for="ri-digits">Digits (zero-padded)</label><input id="ri-digits" type="number" min="1" max="6" step="1" value="2"></div>
+      <div class="field"><label for="ri-scope">Apply to</label>
+        <select id="ri-scope"><option value="all">All questions</option><option value="from">Current question onwards</option></select></div>
+    </div>
+    <p class="hint" id="ri-preview"></p>
+    <div class="dlg-actions">
+      <button type="button" id="ri-cancel">Cancel</button>
+      <button type="submit" class="primary" id="ri-apply">Reindex</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ---- pure functions (also tested outside the browser) ---- */
+// BEGIN-PURE
+function xmlEscape(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// CDATA cannot contain "]]>"; split it across two sections.
+function cdata(s) {
+  return '<![CDATA[' + String(s).replace(/\]\]>/g, ']]]]><![CDATA[>') + ']]>';
+}
+function htmlAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+var CODE_FONT = "font-family:Consolas,Menlo,'Courier New',monospace;";
+var CODE_INLINE_STYLE = CODE_FONT + 'background:#f2f2f2;padding:0 .25em;border-radius:3px;';
+var CODE_BLOCK_STYLE = CODE_FONT + 'white-space:pre;overflow:auto;';
+function htmlText(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+// Math in Moodle's MathJax filter delimiters is passed through untouched (HTML-escaped only):
+// \( inline \), \[ display \] and $$ display $$.
+var MATH_RE = /\$\$[\s\S]+?\$\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/g;
+function inlineMd(text) {
+  var spans = [];
+  // code spans first, so nothing inside them is touched
+  var t = text.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, function (_, _ticks, code) {
+    spans.push('<code style="' + CODE_INLINE_STYLE + '">' + htmlText(code.replace(/^ (.*) $/, '$1')) + '</code>');
+    return '\u0000' + (spans.length - 1) + '\u0000';
+  });
+  t = t.replace(MATH_RE, function (m) {
+    spans.push(htmlText(m));
+    return '\u0000' + (spans.length - 1) + '\u0000';
+  });
+  t = htmlText(t);
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+       .replace(/(^|[^*])\*([^*\s][^*]*)\*(?!\*)/g, '$1<em>$2</em>')
+       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2">$1</a>');
+  return t.replace(/\u0000(\d+)\u0000/g, function (_, i) { return spans[+i]; });
+}
+// A small Markdown subset: fenced code, headings, lists, paragraphs, inline code/bold/italic/links.
+// Raw HTML in the source is shown as text, not passed through.
+function mdToHtml(md) {
+  var lines = String(md).replace(/\r\n?/g, '\n').split('\n');
+  var out = [], para = [], list = null, i = 0;
+  function endPara() { if (para.length) { out.push('<p>' + inlineMd(para.join('\n')).replace(/\n/g, '<br>') + '</p>'); para = []; } }
+  function endList() { if (list) { out.push('</' + list + '>'); list = null; } }
+  while (i < lines.length) {
+    var line = lines[i], m;
+    if ((m = /^\s*(`{3,}|~{3,})/.exec(line))) {
+      endPara(); endList();
+      var fence = m[1], code = [];
+      i++;
+      while (i < lines.length && !new RegExp('^\\s*' + fence[0] + '{' + fence.length + ',}\\s*$').test(lines[i])) { code.push(lines[i]); i++; }
+      i++; // closing fence (or end of text)
+      out.push('<pre style="' + CODE_BLOCK_STYLE + '">' + htmlText(code.join('\n')) + '</pre>');
+      continue;
+    }
+    if (/^\s*$/.test(line)) { endPara(); endList(); i++; continue; }
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
+      endPara(); endList();
+      out.push('<h' + (m[1].length + 2) + '>' + inlineMd(m[2]) + '</h' + (m[1].length + 2) + '>');
+    } else if ((m = /^\s*[-*+]\s+(.*)$/.exec(line)) || (m = /^\s*\d+[.)]\s+(.*)$/.exec(line))) {
+      var kind = /^\s*\d/.test(line) ? 'ol' : 'ul';
+      endPara();
+      if (list !== kind) { endList(); out.push('<' + kind + '>'); list = kind; }
+      out.push('<li>' + inlineMd(m[1]) + '</li>');
+    } else {
+      endList(); para.push(line.trim());
+    }
+    i++;
+  }
+  endPara(); endList();
+  return out.join('\n');
+}
+// Where the quiz script is loaded from: the site, then the release folder (v1.0, v1.0.0, latest...); no folder is the original version at the site root.
+function padBase(settings) {
+  var origin = String(settings.origin || '').trim().replace(/\/+$/, '');
+  var version = String(settings.version || '').trim().replace(/^\/+|\/+$/g, '');
+  return version ? origin + '/' + version : origin;
+}
+var RELEASE_FOLDER = /^(v\d+(\.\d+(\.\d+(-rc\.\d+)?)?)?|latest|latest-rc)$/;
+// A quiz script's address split into the site and the release folder it names ('' for the site root).
+function splitPadSrc(src) {
+  try {
+    var u = new URL(src), parts = u.pathname.split('/').filter(Boolean);
+    parts.pop();
+    var version = parts.length && RELEASE_FOLDER.test(parts[parts.length - 1]) ? parts.pop() : '';
+    return { origin: u.origin + (parts.length ? '/' + parts.join('/') : ''), version: version };
+  } catch (e) { return { origin: '', version: '' }; }
+}
+// The choices for the version, from the site's /versions.json: each minor's folder (newest first), latest, then every exact version.
+// The recommended one is the newest minor's folder: fixes, but never a new minor.
+function versionChoices(list) {
+  var releases = (list && Array.isArray(list.releases)) ? list.releases : [], minors = [];
+  releases.forEach(function (r) {
+    if (/-rc\./.test(r)) return;
+    var m = r.split('.').slice(0, 2).join('.');
+    if (minors.indexOf(m) < 0) minors.push(m);
+  });
+  return { recommended: minors[0] || '', choices: minors.concat(releases.length ? ['latest'] : [], releases) };
+}
+function pycopadSnippet(settings, q) {
+  var src = padBase(settings) + '/pycopad-mdl-quiz.js';
+  var options = (q && q.notes ? ' data-notes="true"' : '') + (q && q.saveOutput ? ' data-save-output="true"' : '');
+  return '<script src="' + htmlAttr(src) + '" data-create-pad data-strategy="' + htmlAttr(settings.strategy) + '"' + options + '><' + '/script>';
+}
+function questionText(q, settings, placeholder) {
+  var html = mdToHtml(q.content || '');
+  if (!html && placeholder) html = '<p style="color:#6a737d;font-style:italic">Add Question Text &hellip;</p>';
+  if (q.mode === 'pycopad') html += (html ? '\n' : '') + pycopadSnippet(settings, q);
+  return html;
+}
+function validate(questions) {
+  var problems = [], seen = {};
+  questions.forEach(function (q, i) {
+    var n = 'Question ' + (i + 1);
+    if (!q.id.trim()) problems.push(n + ': ID is required.');
+    else if (seen[q.id.trim()]) problems.push(n + ': ID "' + q.id.trim() + '" is used twice.');
+    seen[q.id.trim()] = true;
+    if (!(Number(q.marks) >= 0)) problems.push(n + ': marks must be a number, 0 or more.');
+    if (!(parseInt(q.lines, 10) >= 1)) problems.push(n + ': answer size must be at least 1 line.');
+    if (!q.content.trim()) problems.push(n + ': content is empty.');
+    var lo = parseInt(q.wmin, 10), hi = parseInt(q.wmax, 10);
+    if (lo > 0 && hi > 0 && lo > hi) problems.push(n + ': minimum words is more than maximum words.');
+  });
+  return problems;
+}
+// Tags for one question: the whole-file tags, then the question's own, comma or line separated, without repeats.
+function tagList(q, settings) {
+  var seen = {}, out = [];
+  (String(settings.tags || '') + ',' + String(q.tags || '')).split(/[,\n]/).forEach(function (t) {
+    t = t.trim();
+    if (t && !seen[t.toLowerCase()]) { seen[t.toLowerCase()] = true; out.push(t); }
+  });
+  return out;
+}
+function buildXml(questions, settings) {
+  var out = ['<?xml version="1.0" encoding="UTF-8"?>', '<quiz>'];
+  if (settings.category.trim()) {
+    out.push('  <question type="category">', '    <category><text>$course$/' + xmlEscape(settings.category.trim()) + '</text></category>', '  </question>');
+  }
+  questions.forEach(function (q) {
+    var id = q.id.trim();
+    var marks = Number(q.marks).toFixed(7);
+    var lines = parseInt(q.lines, 10);
+    var lo = parseInt(q.wmin, 10), hi = parseInt(q.wmax, 10);
+    var attach = parseInt(q.attach, 10); if (isNaN(attach)) attach = 0;
+    var tags = tagList(q, settings);
+    out.push(
+      '  <question type="essay">',
+      '    <name><text>' + xmlEscape(id) + '</text></name>',
+      '    <questiontext format="html"><text>' + cdata(questionText(q, settings)) + '</text></questiontext>',
+      '    <generalfeedback format="html"><text>' + cdata(mdToHtml(q.feedback || '')) + '</text></generalfeedback>',
+      '    <defaultgrade>' + marks + '</defaultgrade>',
+      '    <penalty>0.0000000</penalty>',
+      '    <hidden>0</hidden>',
+      '    <idnumber>' + xmlEscape(id) + '</idnumber>',
+      '    <responseformat>' + xmlEscape(settings.format) + '</responseformat>',
+      '    <responserequired>' + (q.required === false ? 0 : 1) + '</responserequired>',
+      '    <responsefieldlines>' + lines + '</responsefieldlines>',
+      '    <minwordlimit>' + (lo > 0 ? lo : '') + '</minwordlimit>',
+      '    <maxwordlimit>' + (hi > 0 ? hi : '') + '</maxwordlimit>',
+      '    <attachments>' + attach + '</attachments>',
+      '    <attachmentsrequired>0</attachmentsrequired>',
+      '    <graderinfo format="html"><text>' + cdata(mdToHtml(q.model || '')) + '</text></graderinfo>',
+      '    <responsetemplate format="plain_text"><text>' + cdata(q.starter || '') + '</text></responsetemplate>'
+    );
+    if (tags.length) out.push('    <tags>' + tags.map(function (t) { return '<tag><text>' + xmlEscape(t) + '</text></tag>'; }).join('') + '</tags>');
+    out.push('  </question>');
+  });
+  out.push('</quiz>', '');
+  return out.join('\n');
+}
+
+// One stylesheet for the Moodle-like question box, used by both the Edit tab (scoped to the page)
+// and the preview frame (unscoped), so the two always look the same.
+var QSANS = '-apple-system,"Segoe UI",Roboto,sans-serif';
+function questionCss(scope) {
+  var S = scope ? scope + ' ' : '';
+  return [
+    S + '.que{display:flex;gap:12px;align-items:flex-start;color:#1d2125;font:14px/1.45 ' + QSANS + '}',
+    S + '.info{flex:0 0 138px;background:#e7f1f5;border:1px solid #bfd7e0;border-radius:4px;padding:6px;font-size:.85rem;display:flex;flex-direction:column;gap:5px;box-sizing:border-box}',
+    S + '.info h3{margin:0 0 2px;font-size:1rem}',
+    S + '.content{flex:1;min-width:0}',
+    S + '.formulation{background:#def2f8;border:1px solid #bfd7e0;border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box}',
+    S + '.qtext{margin:0}.qtext p{margin:0 0 .6em}.qtext pre{background:#f5f5f5;border:1px solid #ccc;border-radius:4px;padding:8px;overflow:auto}',
+    S + '.field{display:flex;flex-direction:column;gap:1px;flex:none;min-width:0}',
+    S + 'label,' + S + '.cap{font-size:.75rem;color:#4a5560;display:block}',
+    S + 'input,' + S + 'select,' + S + 'textarea{background:#fff;color:#1d2125;border:1px solid #9fb4bd;border-radius:6px;padding:3px 6px;font:inherit;width:100%;box-sizing:border-box}',
+    S + 'textarea{font-family:Consolas,Menlo,monospace;font-size:13px}',
+    S + '.more-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-top:6px}',
+    S + 'details>summary{cursor:pointer;font-size:.8rem;color:#4a5560}',
+    S + '.ans-box .cap{background:#cfe3ea;padding:2px 8px}',
+    S + '.ans-box{border:1px solid #9fb4bd;border-radius:4px;overflow:hidden;background:#fff}',
+    S + '.ans-box textarea{border:0;border-radius:0;resize:none}',
+    S + '.ans-box iframe{display:block;width:100%;border:0;background:#1e1e1e}',
+    (scope ? '@container (max-width:440px){' : '@media (max-width:440px){') + S + '.que{flex-direction:column}' + S + '.info{flex:none;width:100%}}'
+  ].join('\n');
+}
+// The page shown in the preview frame: Moodle-like question markup, with the question's own text
+// (including the PycoPad script, when the mode is PycoPad) and a plain essay answer box.
+var MATHJAX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.js';
+function previewDoc(q, settings, number) {
+  var rows = Math.max(1, parseInt(q.lines, 10) || 10);
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"><style>body{margin:8px;background:#fff}' + questionCss('') + '</style>' +
+    '<script>window.MathJax=' + JSON.stringify({ tex: { inlineMath: [['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] } }) + ';<' + '/script>' +
+    '<script async src="' + MATHJAX_URL + '"><' + '/script></head><body>' +
+    '<div class="que essay"><div class="info"><h3>Question ' + number + '</h3>Marked out of ' + Number(q.marks || 0).toFixed(2) + '</div>' +
+    '<div class="content"><div class="formulation"><div class="qtext">' + questionText(q, settings, true) + '</div>' +
+    '<div class="ablock"><div class="answer"><textarea name="q' + number + ':1_answer" rows="' + rows + '"></textarea></div></div></div></div></div>' +
+    '</body></html>';
+}
+// END-PURE
+
+/* ---- page ---- */
+(function () {
+  if (typeof document === 'undefined') return;
+  var KEY = 'moodle_xml_builder_v1';
+  var $ = function (id) { return document.getElementById(id); };
+  var qstyle = document.createElement('style');
+  qstyle.textContent = questionCss('#qwrap');
+  document.head.append(qstyle);
+  var SETTING_KEYS = ['category', 'tags', 'origin', 'version', 'strategy', 'format'];
+  var state = { questions: [], settings: { category: '', tags: '', origin: 'https://pythoncodepad.com', version: null, versionAuto: true, strategy: 'default', format: 'monospaced' } };
+  var active = 0;
+  var tab = 'edit';
+
+  // Moodle's essay "input box size" choices.
+  var LINE_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 35, 40];
+  function nearestLines(v) {
+    v = parseInt(v, 10);
+    if (!(v >= 1)) return 10;
+    return LINE_OPTIONS.reduce(function (best, o) { return Math.abs(o - v) < Math.abs(best - v) ? o : best; });
+  }
+  function blank(n) {
+    return { id: 'Q' + n, marks: 1, content: '', model: '', feedback: '', starter: '', tags: '', wmin: '', wmax: '', attach: 0, required: true, mode: 'pycopad', lines: 10, notes: false, saveOutput: false };
+  }
+  function freshQuestion() {
+    var used = {}, n = state.questions.length + 1;
+    state.questions.forEach(function (q) { used[q.id.trim()] = true; });
+    while (used['Q' + n]) n++;
+    return blank(n);
+  }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  function restore() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) adopt(JSON.parse(raw));
+    } catch (e) {}
+  }
+  // Reads a saved set into clean questions and settings without touching the page.
+  function normalise(data) {
+    if (!data || !Array.isArray(data.questions)) throw new Error('Not a question set.');
+    var out = { questions: [], settings: {} };
+    out.questions = data.questions.map(function (q, i) {
+      var b = blank(i + 1);
+      return {
+        id: typeof q.id === 'string' ? q.id : b.id,
+        marks: q.marks != null ? q.marks : b.marks,
+        content: typeof q.content === 'string' ? q.content : '',
+        model: typeof q.model === 'string' ? q.model : '',
+        feedback: typeof q.feedback === 'string' ? q.feedback : '',
+        starter: typeof q.starter === 'string' ? q.starter : '',
+        tags: typeof q.tags === 'string' ? q.tags : '',
+        wmin: q.wmin != null ? q.wmin : '',
+        wmax: q.wmax != null ? q.wmax : '',
+        attach: q.attach != null && !isNaN(parseInt(q.attach, 10)) ? parseInt(q.attach, 10) : 0,
+        required: q.required !== false,
+        mode: q.mode === 'pycopad' ? 'pycopad' : 'text',
+        notes: q.notes === true,
+        saveOutput: q.saveOutput === true,
+        lines: nearestLines(q.lines != null ? q.lines : b.lines)
+      };
+    });
+    var s = data.settings || {};
+    SETTING_KEYS.forEach(function (k) { if (typeof s[k] === 'string') out.settings[k] = s[k]; });
+    out.settings.versionAuto = s.versionAuto === true || typeof s.version !== 'string';   // (a version nobody chose follows the site's recommended one)
+    return out;
+  }
+  function adopt(data) {
+    var n = normalise(data);
+    state.questions = n.questions;
+    SETTING_KEYS.forEach(function (k) { if (n.settings[k] != null) state.settings[k] = n.settings[k]; });
+    state.settings.versionAuto = n.settings.versionAuto;
+    active = 0;
+  }
+
+  /* --- form helpers --- */
+  function field(label, cls, el) {
+    var d = document.createElement('div');
+    d.className = 'field ' + (cls || '');
+    var l = document.createElement('label');
+    l.textContent = label;
+    var uid = 'f' + Math.random().toString(36).slice(2);
+    el.id = uid; l.htmlFor = uid;
+    d.append(l, el);
+    return d;
+  }
+  function input(type, value, onInput, attrs) {
+    var el = document.createElement('input');
+    el.type = type; el.value = value;
+    Object.keys(attrs || {}).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+    el.addEventListener('input', function () { onInput(el.value); });
+    return el;
+  }
+  function textarea(value, rows, onInput) {
+    var el = document.createElement('textarea');
+    el.rows = rows; el.value = value; el.spellcheck = false;
+    el.addEventListener('input', function () { onInput(el.value); });
+    return el;
+  }
+
+  function withPlaceholder(el, text) { el.placeholder = text; return el; }
+
+  // Text areas that grow to fit their text.
+  function grow(el) {
+    if (!el.offsetParent) return; // hidden: no layout yet
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + 2) + 'px';
+  }
+  function growAll() { document.querySelectorAll('#fields textarea.grow').forEach(grow); }
+  function growable(el) {
+    el.classList.add('grow');
+    el.addEventListener('input', function () { grow(el); });
+    return el;
+  }
+  window.addEventListener('resize', function () { requestAnimationFrame(growAll); });
+
+  // The answer box as the student will see it: the real PycoPad for PycoPad questions, a plain box otherwise.
+  function answerBox() {
+    var box = document.createElement('div');
+    box.className = 'ans-box'; box.id = 'ans-box';
+    var cap = document.createElement('div'); cap.className = 'cap';
+    var body = document.createElement('div'); body.className = 'ans-body';
+    box.append(cap, body);
+    return box;
+  }
+  function padOrigin() {
+    var o = (state.settings.origin || '').trim().replace(/\/+$/, '');
+    try { new URL(o); return padBase(state.settings); } catch (e) { return ''; }
+  }
+  function updateAnswerBox() {
+    var box = $('ans-box'), q = state.questions[active];
+    if (!box || !q) return;
+    var lines = nearestLines(q.lines), pad = q.mode === 'pycopad';
+    box.querySelector('.cap').textContent = 'Answer box: ' + (pad ? 'Codepad code editor' : 'plain text') + ', ' + lines + ' lines';
+    var body = box.querySelector('.ans-body');
+    if (pad) {
+      var origin = padOrigin();
+      var fr = body.querySelector('iframe');
+      if (!origin) { body.replaceChildren(); body.textContent = 'Set a valid PycoPad site in Settings.'; return; }
+      if (!fr) {
+        body.replaceChildren();
+        fr = document.createElement('iframe');
+        fr.title = 'PycoPad code editor';
+        body.append(fr);
+      }
+      if (fr.dataset.origin !== origin) { fr.dataset.origin = origin; fr.src = origin + '/'; }
+      // same sizing the embed script uses for a box of this many lines
+      fr.style.height = Math.max(320, 115 + lines * 24) + 'px';
+    } else {
+      var ta = body.querySelector('textarea');
+      if (!ta) {
+        body.replaceChildren();
+        ta = document.createElement('textarea');
+        ta.disabled = true; ta.placeholder = 'Student answer';
+        ta.setAttribute('aria-label', 'Answer box preview');
+        body.append(ta);
+      }
+      ta.rows = lines;
+    }
+  }
+  function updateSnippet() { $('snippet').textContent = pycopadSnippet(state.settings); }
+
+  /* --- the one visible question --- */
+  function render(focusId) {
+    var n = state.questions.length;
+    if (active > n - 1) active = Math.max(0, n - 1);
+    $('empty').hidden = n > 0;
+    $('qbody').hidden = n === 0;
+    $('pos').textContent = n ? 'Question ' + (active + 1) + ' of ' + n : '';
+    $('prev').disabled = active <= 0;
+    $('next').disabled = active >= n - 1;
+    $('toc-clone').disabled = $('toc-del').disabled = n === 0;
+
+    var host = $('fields');
+    host.replaceChildren();
+    if (n) {
+      var q = state.questions[active];
+      q.lines = nearestLines(q.lines);
+
+      var info = document.createElement('div');
+      info.className = 'info';
+      var id = input('text', q.id, function (v) { q.id = v; changed(); });
+      id.placeholder = 'ID'; id.style.fontWeight = '700';
+      id.id = 'qid-input';
+      info.append(field('Question ID', '', id));
+
+      var mode = document.createElement('select');
+      [['pycopad', 'Codepad'], ['text', 'Text']].forEach(function (o) {
+        var opt = document.createElement('option'); opt.value = o[0]; opt.textContent = o[1]; mode.append(opt);
+      });
+      mode.value = q.mode;
+      mode.addEventListener('change', function () { q.mode = mode.value; updateAnswerBox(); changed(); });
+
+      var size = document.createElement('select');
+      LINE_OPTIONS.forEach(function (v) {
+        var opt = document.createElement('option'); opt.value = v; opt.textContent = v + ' lines'; size.append(opt);
+      });
+      size.value = String(q.lines);
+      size.addEventListener('change', function () { q.lines = parseInt(size.value, 10); updateAnswerBox(); changed(); });
+
+      function onOff(value, set) {
+        var s = document.createElement('select');
+        [['no', 'Off'], ['yes', 'On']].forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; s.append(op); });
+        s.value = value ? 'yes' : 'no';
+        s.addEventListener('change', function () { set(s.value === 'yes'); changed(); });
+        return s;
+      }
+
+      info.append(
+        field('Marked out of', '', input('number', q.marks, function (v) { q.marks = v; changed(); }, { min: 0, step: 'any' })),
+        field('Mode', '', mode),
+        field('Answer size', '', size),
+        field('Notes tab, saved with the answer', '', onOff(q.notes, function (v) { q.notes = v; })),
+        field('Last output, saved with the answer', '', onOff(q.saveOutput, function (v) { q.saveOutput = v; }))
+      );
+
+      var content = document.createElement('div');
+      content.className = 'content';
+      var form = document.createElement('div');
+      form.className = 'formulation';
+      var ablock = document.createElement('div');
+      ablock.className = 'ablock';
+      ablock.append(answerBox());
+
+      function select(opts, value, onChange) {
+        var s = document.createElement('select');
+        opts.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; s.append(op); });
+        s.value = String(value);
+        s.addEventListener('change', function () { onChange(s.value); });
+        return s;
+      }
+      var more = document.createElement('details');
+      var sum = document.createElement('summary'); sum.textContent = 'More options';
+      var grid = document.createElement('div'); grid.className = 'more-grid';
+      grid.append(
+        field('Tags for this question (comma separated)', '', input('text', q.tags, function (v) { q.tags = v; changed(); })),
+        field('Student must enter text', '', select([['1', 'Yes'], ['0', 'No']], q.required === false ? '0' : '1', function (v) { q.required = v === '1'; changed(); })),
+        field('Attachments allowed', '', select([['0', 'None'], ['1', '1'], ['2', '2'], ['3', '3'], ['-1', 'Unlimited']], q.attach, function (v) { q.attach = parseInt(v, 10); changed(); })),
+        field('Minimum words (text answers)', '', input('number', q.wmin, function (v) { q.wmin = v; changed(); }, { min: 0, step: 1 })),
+        field('Maximum words (text answers)', '', input('number', q.wmax, function (v) { q.wmax = v; changed(); }, { min: 0, step: 1 }))
+      );
+      more.append(sum, grid);
+      if (q.tags || q.wmin || q.wmax || q.attach || q.required === false) more.open = true;
+
+      form.append(
+        field('Question text – Markdown; math \\( \\) or $$ $$; ``` for code', '', withPlaceholder(growable(textarea(q.content, 3, function (v) { q.content = v; changed(); })), 'Add Question Text …')),
+        ablock,
+        field('Starter code – placed in the answer box exactly as typed (not Markdown)', '', growable(textarea(q.starter, 2, function (v) { q.starter = v; changed(); }))),
+        field('Model answer – Markdown; shown to graders', '', growable(textarea(q.model, 2, function (v) { q.model = v; changed(); }))),
+        field('General feedback – Markdown; shown to students after the attempt', '', growable(textarea(q.feedback, 2, function (v) { q.feedback = v; changed(); }))),
+        more
+      );
+      content.append(form);
+      host.append(info, content);
+      updateAnswerBox();
+      requestAnimationFrame(growAll);
+    }
+    showTab(tab);
+    renderToc();
+    if (focusId && n) host.querySelector('input').focus();
+  }
+
+  function goTo(i, focusId) {
+    if (i < 0 || i >= state.questions.length) return;
+    active = i;
+    render(focusId);
+    $('qpanel').scrollIntoView({ block: 'nearest' });
+  }
+
+  /* --- tabs and preview --- */
+  function showTab(name) {
+    tab = name;
+    ['edit', 'preview'].forEach(function (t) {
+      var on = t === name;
+      $('tab-' + t).setAttribute('aria-selected', on);
+      $('tab-' + t).tabIndex = on ? 0 : -1;
+      $('pane-' + t).hidden = !on;
+    });
+    $('pv-refresh').hidden = name !== 'preview';
+    if (name === 'preview') refreshPreview(); else requestAnimationFrame(growAll);
+  }
+  var fitTimer = null;
+  function refreshPreview() {
+    var q = state.questions[active], frame = $('pv');
+    clearInterval(fitTimer);
+    if (!q) { frame.srcdoc = ''; return; }
+    frame.srcdoc = previewDoc(q, state.settings, active + 1);
+    // PycoPad and MathJax change the height after load, so follow it for a while.
+    var ticks = 0;
+    fitTimer = setInterval(function () {
+      try {
+        var h = frame.contentDocument.documentElement.scrollHeight;
+        if (h) frame.style.height = (h + 4) + 'px';
+      } catch (e) {}
+      if (++ticks > 60 || tab !== 'preview') clearInterval(fitTimer);
+    }, 500);
+  }
+  ['edit', 'preview'].forEach(function (t) {
+    $('tab-' + t).addEventListener('click', function () { showTab(t); });
+    $('tab-' + t).addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var o = t === 'edit' ? 'preview' : 'edit'; showTab(o); $('tab-' + o).focus(); }
+    });
+  });
+  $('pv-refresh').addEventListener('click', refreshPreview);
+
+  /* --- sidebar --- */
+  function problemIndexes() {
+    var bad = {};
+    validate(state.questions).forEach(function (p) {
+      var m = /^Question (\d+):/.exec(p);
+      if (m) bad[+m[1] - 1] = true;
+    });
+    return bad;
+  }
+  var dragFrom = null;
+  function clearOver() {
+    document.querySelectorAll('#toc-list .over-before, #toc-list .over-after').forEach(function (e) { e.classList.remove('over-before', 'over-after'); });
+  }
+  function renderToc() {
+    var list = $('toc-list'), bad = problemIndexes(), last = state.questions.length - 1;
+    list.replaceChildren();
+    state.questions.forEach(function (q, i) {
+      var li = document.createElement('li');
+      li.draggable = true;
+      var grip = document.createElement('span'); grip.className = 'grip'; grip.textContent = '⠇'; grip.setAttribute('aria-hidden', 'true');
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'sel';
+      if (i === active) b.setAttribute('aria-current', 'true');
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = (i + 1) + '.';
+      var id = document.createElement('span'); id.className = 'id'; id.textContent = q.id.trim() || '(no ID)';
+      var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = q.mode === 'pycopad' ? 'code' : 'txt';
+      b.append(n, id, tag);
+      if (bad[i]) { var w = document.createElement('span'); w.className = 'bad'; w.textContent = '!'; w.title = 'Needs attention'; b.append(w); }
+      b.addEventListener('click', function () { goTo(i); });
+      function arrow(label, cls, text, to, disabled) {
+        var a = document.createElement('button');
+        a.type = 'button'; a.className = 'mv ' + cls; a.textContent = text; a.disabled = disabled;
+        a.setAttribute('aria-label', label + ' (question ' + (i + 1) + ')');
+        a.addEventListener('click', function () { moveQuestion(i, to, cls); });
+        return a;
+      }
+      li.append(grip, b, arrow('Move up', 'mvu', '↑', i - 1, i === 0), arrow('Move down', 'mvd', '↓', i + 1, i === last));
+
+      li.addEventListener('dragstart', function (e) {
+        dragFrom = i; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i));
+        li.classList.add('dragging');
+      });
+      li.addEventListener('dragend', function () { dragFrom = null; li.classList.remove('dragging'); clearOver(); });
+      li.addEventListener('dragover', function (e) {
+        if (dragFrom === null) return;
+        e.preventDefault();
+        var r = li.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2;
+        clearOver();
+        li.classList.add(after ? 'over-after' : 'over-before');
+        li.dataset.after = after ? '1' : '';
+      });
+      li.addEventListener('drop', function (e) {
+        if (dragFrom === null) return;
+        e.preventDefault();
+        var to = i + (li.dataset.after ? 1 : 0), from = dragFrom;
+        if (from < to) to--;
+        dragFrom = null; clearOver();
+        moveQuestion(from, to);
+      });
+      list.append(li);
+    });
+  }
+  // Moves a question; the one being viewed stays the one being viewed.
+  function moveQuestion(from, to, focusKind) {
+    var n = state.questions.length;
+    if (from === to || from < 0 || to < 0 || from >= n || to >= n) return;
+    var item = state.questions.splice(from, 1)[0];
+    state.questions.splice(to, 0, item);
+    if (active === from) active = to;
+    else if (from < active && active <= to) active -= 1;
+    else if (to <= active && active < from) active += 1;
+    render(); changed();
+    say('Moved "' + item.id + '" to position ' + (to + 1) + '.');
+    if (focusKind) {
+      var row = $('toc-list').children[to];
+      var btn = row && (row.querySelector('.' + focusKind + ':not(:disabled)') || row.querySelector('.mv:not(:disabled)'));
+      if (btn) btn.focus();
+    }
+  }
+
+  function changed() {
+    save();
+    var xml = buildXml(state.questions, state.settings);
+    $('out').textContent = xml;
+    var problems = validate(state.questions);
+    $('errors').textContent = problems.join(' ');
+    updateSnippet();
+    renderToc();
+    return { xml: xml, problems: problems };
+  }
+  function say(msg) { $('status').textContent = msg; }
+
+  /* --- question commands --- */
+  function addAfterCurrent() {
+    var at = state.questions.length ? active + 1 : 0;
+    state.questions.splice(at, 0, freshQuestion());
+    active = at; render(true); changed(); $('qpanel').scrollIntoView({ block: 'nearest' });
+    say('Added question ' + (at + 1) + '.');
+  }
+  function uniqueId(base) {
+    var used = {}, id = base, n = 2;
+    state.questions.forEach(function (q) { used[q.id.trim()] = true; });
+    while (used[id]) id = base + '-' + n++;
+    return id;
+  }
+  function cloneCurrent() {
+    if (!state.questions.length) return;
+    var c = JSON.parse(JSON.stringify(state.questions[active]));
+    c.id = uniqueId(c.id.trim() + '-copy');
+    state.questions.splice(active + 1, 0, c);
+    active += 1; render(true); changed(); $('qpanel').scrollIntoView({ block: 'nearest' });
+    say('Duplicated as question ' + (active + 1) + '.');
+  }
+  function deleteCurrent() {
+    if (!state.questions.length || !confirm('Delete question ' + (active + 1) + ' (' + state.questions[active].id + ')?')) return;
+    state.questions.splice(active, 1);
+    render(); changed();
+  }
+  $('prev').addEventListener('click', function () { goTo(active - 1); });
+  $('next').addEventListener('click', function () { goTo(active + 1); });
+  $('toc-add').addEventListener('click', addAfterCurrent);
+  $('toc-clone').addEventListener('click', cloneCurrent);
+  $('toc-del').addEventListener('click', deleteCurrent);
+
+  /* --- reindex --- */
+  var dlg = $('reindex-dlg');
+  function riIds() {
+    var prefix = $('ri-prefix').value, start = parseInt($('ri-start').value, 10) || 0, digits = Math.max(1, parseInt($('ri-digits').value, 10) || 1);
+    var from = $('ri-scope').value === 'from' ? active : 0, ids = [];
+    for (var i = from; i < state.questions.length; i++) {
+      var num = String(start + i - from);
+      while (num.length < digits) num = '0' + num;
+      ids.push(prefix + num);
+    }
+    return { from: from, ids: ids };
+  }
+  function riPreview() {
+    var ids = riIds().ids;
+    $('ri-preview').textContent = ids.length ? 'Becomes: ' + (ids.length > 3 ? ids.slice(0, 2).join(', ') + ' … ' + ids[ids.length - 1] : ids.join(', ')) + ' (' + ids.length + ' questions)' : 'No questions to reindex.';
+  }
+  ['ri-prefix', 'ri-start', 'ri-digits', 'ri-scope'].forEach(function (id) { $(id).addEventListener('input', riPreview); });
+  $('toc-reindex').addEventListener('click', function () {
+    if (!state.questions.length) { say('Add a question first.'); return; }
+    riPreview(); dlg.showModal(); $('ri-prefix').focus();
+  });
+  $('ri-cancel').addEventListener('click', function () { dlg.close(); });
+  $('reindex-form').addEventListener('submit', function () {
+    var r = riIds();
+    r.ids.forEach(function (id, k) { state.questions[r.from + k].id = id; });
+    render(); changed(); say('Reindexed ' + r.ids.length + ' questions.');
+  });
+
+  /* --- file: export --- */
+  function download(name, text, type) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: type }));
+    a.download = name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function ready() {
+    if (!state.questions.length) { say('Add at least one question.'); return null; }
+    var r = changed();
+    if (r.problems.length) { say('Fix the problems listed below first.'); return null; }
+    return r.xml;
+  }
+  var originTimer = null;
+  SETTING_KEYS.forEach(function (k) {
+    $(k).addEventListener('input', function () {
+      state.settings[k] = $(k).value;
+      if (k === 'version') state.settings.versionAuto = false;   // (chosen here: kept, never replaced by the site's recommended one)
+      changed();
+      if (k === 'origin') { clearTimeout(originTimer); originTimer = setTimeout(function () { updateAnswerBox(); loadVersions(); }, 600); }
+      if (k === 'version') updateAnswerBox();
+    });
+  });
+  function syncSettings() { fillVersions(); SETTING_KEYS.forEach(function (k) { $(k).value = state.settings[k] == null ? '' : state.settings[k]; }); updateSnippet(); }
+  var versionList = [];
+  function fillVersions() {
+    var sel = $('version'), current = state.settings.version == null ? '' : state.settings.version;
+    var names = versionList.slice();
+    if (current && names.indexOf(current) < 0) names.unshift(current);
+    var label = function (v) {
+      if (v === 'latest') return 'latest (always the newest release)';
+      if (/^v\d+\.\d+$/.test(v)) return v + ' (gets fixes)';
+      if (/-rc\./.test(v)) return v + ' (a candidate, to try)';
+      if (/^v\d+\.\d+\.\d+$/.test(v)) return v + ' (never changes)';
+      return v;
+    };
+    sel.replaceChildren();
+    names.concat(['']).forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = v ? label(v) : 'Original (site root, before versions)';
+      sel.append(o);
+    });
+    sel.value = current;
+  }
+  var versionsFrom = null;
+  function loadVersions() {
+    var o = (state.settings.origin || '').trim().replace(/\/+$/, '');
+    if (!o || o === versionsFrom) return;
+    versionsFrom = o;
+    fetch(o + '/versions.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (list) {
+      if (o !== versionsFrom) return;
+      var v = versionChoices(list);
+      versionList = v.choices;
+      if (state.settings.version == null || state.settings.versionAuto) { state.settings.version = v.recommended; state.settings.versionAuto = true; changed(); updateAnswerBox(); }
+      fillVersions(); updateSnippet();
+    });
+  }
+
+  $('btn-settings').addEventListener('click', function () { $('settings-dlg').showModal(); });
+  $('btn-export').addEventListener('click', function () { $('export-dlg').showModal(); });
+  $('ex-xml').addEventListener('click', function () {
+    var xml = ready(); if (!xml) { $('export-dlg').close(); return; }
+    download('moodle-questions.xml', xml, 'application/xml'); say('Downloaded moodle-questions.xml.'); $('export-dlg').close();
+  });
+  $('ex-copy').addEventListener('click', function () {
+    var xml = ready(); if (!xml) { $('export-dlg').close(); return; }
+    navigator.clipboard.writeText(xml).then(function () { say('XML copied.'); }, function () { say('Copy failed; use Download.'); });
+    $('export-dlg').close();
+  });
+  $('ex-json').addEventListener('click', function () {
+    download('moodle-question-set.json', JSON.stringify(state, null, 2), 'application/json'); say('Saved the set.'); $('export-dlg').close();
+  });
+  $('clear').addEventListener('click', function () {
+    if (!confirm('Remove all questions?')) return;
+    state.questions = []; active = 0; render(); changed();
+  });
+
+  /* --- file: import (JSON set or Moodle XML) --- */
+  var lossy = 0;
+  function codeSpan(s) {
+    if (s.indexOf('`') < 0) return '`' + s + '`';
+    return '`` ' + s + ' ``';
+  }
+  function inlineNode(c) {
+    if (c.nodeType === 3) return c.nodeValue.replace(/\s+/g, ' ');
+    if (c.nodeType !== 1) return '';
+    var tag = c.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'style') return '';
+    if (tag === 'code' || tag === 'tt' || tag === 'kbd') return codeSpan(c.textContent);
+    if (tag === 'strong' || tag === 'b') return '**' + inlineKids(c) + '**';
+    if (tag === 'em' || tag === 'i') return '*' + inlineKids(c) + '*';
+    if (tag === 'br') return '\n';
+    if (tag === 'a' && /^https?:/i.test(c.getAttribute('href') || '')) return '[' + inlineKids(c) + '](' + c.getAttribute('href') + ')';
+    if (tag === 'img' || tag === 'table' || tag === 'svg' || tag === 'iframe' || tag === 'video') { lossy++; return c.textContent; }
+    return inlineKids(c);
+  }
+  function inlineKids(el) {
+    var s = '';
+    el.childNodes.forEach(function (c) { s += inlineNode(c); });
+    return s;
+  }
+  var BLOCK = { p: 1, div: 1, ul: 1, ol: 1, pre: 1, h1: 1, h2: 1, h3: 1, h4: 1, h5: 1, h6: 1, blockquote: 1, table: 1, hr: 1, section: 1, li: 1 };
+  function blockKids(el) {
+    var parts = [], buf = '';
+    function flush() { var s = buf.replace(/[ \t]+\n/g, '\n').trim(); if (s) parts.push(s); buf = ''; }
+    el.childNodes.forEach(function (c) {
+      var tag = c.nodeType === 1 ? c.tagName.toLowerCase() : '';
+      if (!BLOCK[tag]) { buf += inlineNode(c); return; }
+      flush();
+      if (tag === 'pre') {
+        var code = c.textContent.replace(/\n$/, '');
+        var fence = code.indexOf('```') >= 0 ? '~~~' : '```';
+        parts.push(fence + '\n' + code + '\n' + fence);
+      } else if (/^h[1-6]$/.test(tag)) {
+        var level = Math.min(4, Math.max(1, +tag[1] - 2));
+        parts.push(new Array(level + 1).join('#') + ' ' + inlineKids(c).trim());
+      } else if (tag === 'ul' || tag === 'ol') {
+        var items = [], k = 1;
+        c.childNodes.forEach(function (li) {
+          if (li.nodeType !== 1 || li.tagName.toLowerCase() !== 'li') return;
+          items.push((tag === 'ol' ? (k++) + '. ' : '- ') + blockKids(li).replace(/\n+/g, ' '));
+        });
+        parts.push(items.join('\n'));
+      } else if (tag === 'table') {
+        lossy++; parts.push(c.textContent.replace(/\s+/g, ' ').trim());
+      } else if (tag === 'hr') {
+      } else {
+        parts.push(blockKids(c));
+      }
+    });
+    flush();
+    return parts.filter(Boolean).join('\n\n');
+  }
+  // HTML question text -> Markdown, noticing a PycoPad script.
+  function htmlToQuestion(html) {
+    var doc = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
+    var out = { mode: 'text', strategy: '', origin: '', notes: false, saveOutput: false };
+    doc.querySelectorAll('script').forEach(function (s) {
+      var src = s.getAttribute('src') || '';
+      if (/pycopad/i.test(src) || s.hasAttribute('data-create-pad')) {
+        out.mode = 'pycopad';
+        out.strategy = s.getAttribute('data-strategy') || '';
+        out.notes = s.getAttribute('data-notes') === 'true';
+        out.saveOutput = s.getAttribute('data-save-output') === 'true';
+        var where = splitPadSrc(src);
+        if (where.origin) { out.origin = where.origin; out.version = where.version; }
+      }
+    });
+    doc.querySelectorAll('pyco-pad').forEach(function (p) { out.mode = 'pycopad'; });
+    out.md = blockKids(doc.body);
+    return out;
+  }
+  function kid(el, tag) {
+    for (var c = el.firstElementChild; c; c = c.nextElementSibling) if (c.tagName === tag) return c;
+    return null;
+  }
+  function kidText(el, tag) {
+    var k = kid(el, tag); if (!k) return '';
+    var t = kid(k, 'text');
+    return (t ? t.textContent : k.textContent) || '';
+  }
+  function parseMoodleXml(text) {
+    var doc = new DOMParser().parseFromString(text, 'application/xml');
+    if (doc.getElementsByTagName('parsererror').length || !doc.documentElement || doc.documentElement.tagName !== 'quiz') throw new Error('That is not a Moodle XML question file.');
+    var res = { questions: [], settings: {}, skipped: 0, lossy: 0 };
+    lossy = 0;
+    for (var el = doc.documentElement.firstElementChild; el; el = el.nextElementSibling) {
+      if (el.tagName !== 'question') continue;
+      var type = el.getAttribute('type');
+      if (type === 'category') {
+        var cat = kidText(el, 'category').replace(/^\$[a-z]+\$\/?/, '').replace(/^top\/?/, '');
+        if (cat && !res.settings.category) res.settings.category = cat;
+        continue;
+      }
+      if (type !== 'essay') { res.skipped++; continue; }
+      var qt = kid(el, 'questiontext'), fmt = qt ? qt.getAttribute('format') : 'html';
+      var body = kidText(el, 'questiontext'), conv;
+      if (fmt === 'markdown') conv = { md: body, mode: /pycopad/i.test(body) ? 'pycopad' : 'text', strategy: '', origin: '' };
+      else conv = htmlToQuestion(body);
+      if (conv.mode === 'pycopad') {
+        if (conv.strategy && !res.settings.strategy) res.settings.strategy = conv.strategy;
+        if (conv.origin && !res.settings.origin) res.settings.origin = conv.origin;
+        if (conv.version != null && res.settings.version == null) res.settings.version = conv.version;
+      }
+      var model = htmlToQuestion(kidText(el, 'graderinfo')).md;
+      var feedback = htmlToQuestion(kidText(el, 'generalfeedback')).md;
+      var rt = kid(el, 'responsetemplate'), starter = kidText(el, 'responsetemplate');
+      if (rt && rt.getAttribute('format') === 'html' && starter) starter = new DOMParser().parseFromString('<body>' + starter + '</body>', 'text/html').body.textContent;
+      var tags = [];
+      var tg = kid(el, 'tags');
+      if (tg) for (var tk = tg.firstElementChild; tk; tk = tk.nextElementSibling) { var tt = (kidText(tk, 'text') || tk.textContent || '').trim(); if (tt) tags.push(tt); }
+      var id = kidText(el, 'name').trim() || kidText(el, 'idnumber').trim();
+      var marks = parseFloat(kidText(el, 'defaultgrade'));
+      var att = parseInt(kidText(el, 'attachments'), 10);
+      res.questions.push({
+        id: id, marks: marks >= 0 ? marks : 1, content: conv.md, model: model, feedback: feedback, starter: starter,
+        tags: tags.join(', '), wmin: kidText(el, 'minwordlimit').trim(), wmax: kidText(el, 'maxwordlimit').trim(),
+        attach: isNaN(att) ? 0 : att, required: kidText(el, 'responserequired').trim() !== '0',
+        mode: conv.mode, notes: conv.notes === true, saveOutput: conv.saveOutput === true, lines: nearestLines(kidText(el, 'responsefieldlines'))
+      });
+    }
+    res.lossy = lossy;
+    return res;
+  }
+  function parseSetJson(text) {
+    var data = JSON.parse(text);
+    var tmp = normalise(data);
+    return { questions: tmp.questions, settings: tmp.settings, skipped: 0, lossy: 0 };
+  }
+  function isPristine() {
+    return state.questions.every(function (q) { return !q.content.trim() && !q.model.trim(); });
+  }
+  var pending = null;
+  function applyImport(res, mode, name) {
+    if (mode === 'replace') { state.questions = []; active = 0; }
+    var firstNew = state.questions.length;
+    res.questions.forEach(function (q) {
+      var c = JSON.parse(JSON.stringify(q));
+      if (!c.id.trim()) c.id = freshQuestion().id;
+      c.id = mode === 'add' ? uniqueId(c.id.trim()) : c.id.trim();
+      state.questions.push(c);
+    });
+    var s = res.settings || {};
+    SETTING_KEYS.forEach(function (k) {
+      if (k === 'version' ? s[k] == null : !s[k]) return;   // (an empty version is the site root: questions from before versions keep it)
+      if (mode === 'replace' || !state.settings[k] || (k === 'category' && !state.settings.category)) { state.settings[k] = s[k]; if (k === 'version') state.settings.versionAuto = false; }
+    });
+    active = Math.min(firstNew, state.questions.length - 1);
+    syncSettings(); render(); changed();
+    var msg = 'Imported ' + res.questions.length + ' question' + (res.questions.length === 1 ? '' : 's') + ' from ' + name + '.';
+    if (res.skipped) msg += ' Skipped ' + res.skipped + ' that were not essay questions.';
+    if (res.lossy) msg += ' ' + res.lossy + ' table, image or similar element(s) were reduced to plain text.';
+    say(msg);
+  }
+  function importText(name, text) {
+    var body = text.replace(/^﻿/, '').trim(), res;
+    res = body.charAt(0) === '{' ? parseSetJson(body) : parseMoodleXml(body);
+    if (!res.questions.length) { say('No essay questions were found in ' + name + '.'); return; }
+    if (!state.questions.length || isPristine()) { applyImport(res, 'replace', name); return; }
+    pending = { res: res, name: name };
+    $('import-msg').textContent = 'Found ' + res.questions.length + ' question' + (res.questions.length === 1 ? '' : 's') + ' in ' + name + '. You currently have ' + state.questions.length + '.';
+    $('import-dlg').showModal();
+  }
+  ['add', 'replace'].forEach(function (m) {
+    $('im-' + m).addEventListener('click', function () {
+      $('import-dlg').close();
+      if (pending) applyImport(pending.res, m, pending.name);
+      pending = null;
+    });
+  });
+  $('im-cancel').addEventListener('click', function () { pending = null; $('import-dlg').close(); });
+  $('btn-import').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', function () {
+    var f = $('file').files[0]; if (!f) return;
+    f.text().then(function (t) { importText(f.name, t); }).catch(function (e) { say('Could not import: ' + e.message); });
+    $('file').value = '';
+  });
+
+  restore();
+  if (!state.questions.length) state.questions.push(blank(1));
+  syncSettings(); render(); changed(); loadVersions();
+})();
+</script>
+</body>
+</html>

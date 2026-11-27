@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Python Code Editor</title>
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <!-- Load Skulpt for Python Execution -->
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+  <!-- Load LZ-String for Code Sharing -->
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <script type="module" crossorigin src="./assets/main-B27al1eZ.js"></script>
+  <link rel="modulepreload" crossorigin href="./assets/format-BgYY1c_L.js">
+  <link rel="stylesheet" crossorigin href="./assets/main-vchi7Sct.css">
+</head>
+
+<body>
+  <!-- UI STRINGS CONFIGURATION -->
+  <script>
+    window.IDE_UI_STRINGS = {
+      statusReadOnly: 'Read-only',
+      statusSyncing: 'Saving...',
+      copied: 'Copied'
+    };
+  </script>
+
+  <!-- Top Toolbar -->
+  <div class="main-toolbar">
+    <div class="toolbar-left">
+      <a href="./#c=MQ18ZXTwFD2AAgAoE8AuALA9gOyQGEcATAUwAcBDEpALiXIDcyAbHCs2gIzVSwCWrJABkyAdwEBnBEgAUSSdiTYySLGwpIcAMyQBxHDgDmrNfrIBbAXgFIAlLNlSArseNkpGAfilIqeLQ6AgAenio4DBTiZpJSAALGllRCAHQAxjiWCLIUAE44AFZk6RhI1B4MWBgYFFJ0APQNxgLYLtwZWQ0UblisLt1omQC01CQ5yLBT0zMgQA" class="main-title pyco-logo" target="_blank" rel="noopener noreferrer" title="python codepad" aria-label="python codepad">
+        <span class="pyco-gt">&gt;</span><span class="pyco-logo-py">python</span><span class="pyco-logo-pad">codepad</span><span class="pyco-us">_</span>
+      </a>
+      <span id="sync-status" role="status"></span>
+    </div>
+    <div class="toolbar-actions">
+      <button id="btn-config" class="btn-layout" title="Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          style="vertical-align: middle;">
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+      <button id="btn-notes" class="btn-layout" title="Notes" aria-label="Notes" aria-pressed="false" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;" aria-hidden="true">
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/>
+        </svg>
+      </button>
+      <button id="btn-layout" class="btn-layout" title="Change Layout">
+        <span id="layout-icon"><svg data-layout="side-by-side" xmlns="http://www.w3.org/2000/svg" width="1.3em" height="1.3em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg></span><span class="btn-label"> Layout</span>
+      </button>
+      <button id="btn-share" class="btn-layout" title="Share Code">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg><span class="btn-label"> Share</span>
+      </button>
+      <button id="btn-run" class="btn-run" title="Run Code">► Run<span class="btn-label"> Code</span></button>
+    </div>
+  </div>
+
+  <div id="sync-warning" role="alert" hidden></div>
+
+  <!-- Main Container -->
+  <div class="container vertical-split" id="main-container">
+
+    <!-- Editor Panel -->
+    <div id="editor-wrapper">
+      <div id="custom-editor-container">
+        <div id="line-numbers">1</div>
+        <div id="code-overlay-wrapper">
+          <pre id="highlighting" aria-hidden="true"><code id="highlighting-content"></code></pre>
+          <textarea id="editing" spellcheck="false" placeholder="# write python code here" aria-label="Python code" aria-describedby="editor-help"></textarea>
+          <span id="editor-help" class="sr-only">Press Escape then Tab to move focus out of the editor. Shift+Enter or Ctrl+Enter runs the code.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resizer Handle -->
+    <div class="resizer" id="resizer"></div>
+
+    <!-- Output Panel -->
+    <div id="output-wrapper">
+      <div class="panel-header">
+        <span id="panel-title">OUTPUT</span>
+        <div class="panel-controls">
+          <label class="safe-mode-label" id="safe-mode-container" style="display: none;">
+            <input type="checkbox" id="chk-safe-mode" checked />
+            <span>Safe Mode</span>
+          </label>
+          <button id="btn-clear" class="btn-sm btn-clear" title="Clear output" aria-label="Clear output">Clear</button>
+          <button id="btn-hide-output" class="btn-sm" title="Close output panel" aria-label="Close output panel">Close</button>
+        </div>
+      </div>
+      <div id="output"></div>
+      <div id="notes-pane" hidden>
+        <textarea id="notes" wrap="off" spellcheck="false" aria-label="Notes" placeholder="Notes for yourself. They are saved with your answer."></textarea>
+        <div id="notes-count" role="status" hidden></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Settings</h3>
+        <button id="btn-close-settings" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <label>Theme:</label>
+          <select id="theme-select">
+            <option value="dark">Dark (Default)</option>
+            <option value="light">Light</option>
+            <option value="hc">High Contrast</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label>Font Size:</label>
+          <div class="font-size-controls">
+            <button id="btn-font-dec" class="btn-sm">-</button>
+            <span id="font-size-display">11 pt</span>
+            <button id="btn-font-inc" class="btn-sm">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
