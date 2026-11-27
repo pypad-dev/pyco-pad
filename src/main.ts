@@ -4,6 +4,7 @@ import { SkulptRunner } from './skulpt-runner';
 import { HostSync } from './host-sync';
 import { AnswerPanel } from './answer-panel';
 import { statusView } from './status';
+import { decode } from './code-image/format';
 import { FONT_SIZE_KEY, clampFontSize, ptToPx, readSavedFontSize } from './font-size';
 import type { HostMessage } from './types';
 
@@ -13,7 +14,11 @@ const editor = new Editor();
 
 const loadCodeFromHash = () => {
   const hash = window.location.hash;
-  if (hash.startsWith('#c=')) {
+  // #b= is the code as plain base64 (see code-image); #c= is compressed, from the Share button
+  if (hash.startsWith('#b=')) {
+    const code = decode(hash.substring(3));
+    if (code) editor.setValue(code);
+  } else if (hash.startsWith('#c=')) {
     try {
       if (typeof LZString !== 'undefined') {
         const compressed = hash.substring(3);

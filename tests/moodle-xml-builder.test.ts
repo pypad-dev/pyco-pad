@@ -149,3 +149,57 @@ describe('versions', () => {
     expect(lib.versionChoices(null)).toEqual({ recommended: '', choices: [] });
   });
 });
+
+describe('code images in the question text', () => {
+  const frame = '<iframe src="https://pad.example/v1.1/code-image#Zm9yIHg&alt=A%20loop" title="Code (image)" width="100%" height="152" style="border:0"></iframe>';
+
+  it('lets a code image through as an iframe, not as text', () => {
+    const html = lib.mdToHtml('What does this print?\n\n' + frame + '\n\nThen explain.');
+    expect(html).toContain('<iframe src="https://pad.example/v1.1/code-image#Zm9yIHg&amp;alt=A%20loop" title="Code (image)" width="100%" height="152" style="border:0"></iframe>');
+    expect(html).not.toContain('&lt;iframe');
+    expect(html).toContain('<p>What does this print?</p>');
+    expect(html).toContain('<p>Then explain.</p>');
+  });
+
+  it('rebuilds the tag, so extra attributes are dropped', () => {
+    const html = lib.mdToHtml('<iframe src="https://pad.example/code-image#abc" onload="alert(1)" height="90" srcdoc="x"></iframe>');
+    expect(html).toBe('<iframe src="https://pad.example/code-image#abc" title="Code (image)" width="100%" height="90" style="border:0"></iframe>');
+  });
+
+  it('still escapes any other iframe or HTML', () => {
+    for (const raw of [
+      '<iframe src="https://evil.example/page"></iframe>',
+      '<iframe src="https://pad.example/code-image?x=1"></iframe>',
+      '<iframe src="javascript:alert(1)"></iframe>',
+      '<script>alert(1)</script>',
+      'text <iframe src="https://pad.example/code-image#abc"></iframe> inside a sentence',
+    ]) {
+      const html = lib.mdToHtml(raw);
+      expect(html).not.toMatch(/<iframe|<script/);
+    }
+  });
+
+  it('is written into the exported question text', () => {
+    expect(lib.buildXml([q({ content: frame })], settings)).toContain('<iframe src="https://pad.example/v1.1/code-image#Zm9yIHg&amp;alt=A%20loop"');
+  });
+});
+
+describe('Use buttons option', () => {
+  it('adds nothing when it is off', () => {
+    expect(lib.buildXml([q()], settings)).not.toContain('moodle-pre-decorator');
+  });
+
+  it('adds the decorator script after the pad script, from the same folder', () => {
+    const xml = lib.buildXml([q({ useButtons: true })], { ...settings, version: 'v1.1' });
+    const pad = xml.indexOf('v1.1/pycopad-mdl-quiz.js');
+    const decorator = xml.indexOf('<script src="https://pad.example/v1.1/moodle-pre-decorator.js"></script>');
+    expect(pad).toBeGreaterThan(-1);
+    expect(decorator).toBeGreaterThan(pad);
+  });
+
+  it('works without the pad too, since the button also copies', () => {
+    const xml = lib.buildXml([q({ mode: 'text', useButtons: true })], settings);
+    expect(xml).toContain('moodle-pre-decorator.js');
+    expect(xml).not.toContain('pycopad-mdl-quiz.js');
+  });
+});

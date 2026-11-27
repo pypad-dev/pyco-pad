@@ -2,6 +2,10 @@
 
 A small Python code pad (Skulpt, in the browser) that can replace the answer box of a Moodle essay question, saving the student's code into it through [lms-widget-manager](https://github.com/pypad-dev/lms-widget-manager).
 
+## Code as an image
+
+To show code in a question so it cannot be copied, open `/<version>/code-image` and run the helper there: [docs/CODE-IMAGE.md](docs/CODE-IMAGE.md).
+
 ## In a Moodle question
 
 Add to the question text (the question builder, `/CodepadQuestionBuilder.html`, writes it for you):

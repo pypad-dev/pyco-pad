@@ -268,6 +268,15 @@ function inlineMd(text) {
 }
 // A small Markdown subset: fenced code, headings, lists, paragraphs, inline code/bold/italic/links.
 // Raw HTML in the source is shown as text, not passed through.
+// A code image (docs/CODE-IMAGE.md) is the one piece of raw HTML the builder lets through. It is rebuilt from its address and height,
+// so nothing else in the tag (a script, an event handler, another address) can ride along.
+var CODE_IMAGE = /^\s*<iframe\b[^>]*\bsrc="(https?:\/\/[^"\s#]+\/code-image(?:\.html)?#[A-Za-z0-9_\-&=%.]*)"[^>]*>\s*<\/iframe>\s*$/i;
+function codeImageHtml(line) {
+  var m = CODE_IMAGE.exec(line);
+  if (!m) return null;
+  var h = /\bheight="(\d{1,4})"/i.exec(line);
+  return '<iframe src="' + htmlAttr(m[1]) + '" title="Code (image)" width="100%" height="' + (h ? h[1] : '200') + '" style="border:0"></iframe>';
+}
 function mdToHtml(md) {
   var lines = String(md).replace(/\r\n?/g, '\n').split('\n');
   var out = [], para = [], list = null, i = 0;
@@ -284,6 +293,7 @@ function mdToHtml(md) {
       out.push('<pre style="' + CODE_BLOCK_STYLE + '">' + htmlText(code.join('\n')) + '</pre>');
       continue;
     }
+    if (codeImageHtml(line)) { endPara(); endList(); out.push(codeImageHtml(line)); i++; continue; }
     if (/^\s*$/.test(line)) { endPara(); endList(); i++; continue; }
     if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
       endPara(); endList();
@@ -333,10 +343,15 @@ function pycopadSnippet(settings, q) {
   var options = (q && q.notes ? ' data-notes="true"' : '') + (q && q.saveOutput ? ' data-save-output="true"' : '');
   return '<script src="' + htmlAttr(src) + '" data-create-pad data-strategy="' + htmlAttr(settings.strategy) + '"' + options + '><' + '/script>';
 }
+// The script that puts a Use button on each code block (it copies the code and inserts it into the pad). It goes last, so the blocks above it exist.
+function decoratorSnippet(settings) {
+  return '<script src="' + htmlAttr(padBase(settings) + '/moodle-pre-decorator.js') + '"><' + '/script>';
+}
 function questionText(q, settings, placeholder) {
   var html = mdToHtml(q.content || '');
   if (!html && placeholder) html = '<p style="color:#6a737d;font-style:italic">Add Question Text &hellip;</p>';
   if (q.mode === 'pycopad') html += (html ? '\n' : '') + pycopadSnippet(settings, q);
+  if (q.useButtons) html += (html ? '\n' : '') + decoratorSnippet(settings);
   return html;
 }
 function validate(questions) {
@@ -462,7 +477,7 @@ function previewDoc(q, settings, number) {
     return LINE_OPTIONS.reduce(function (best, o) { return Math.abs(o - v) < Math.abs(best - v) ? o : best; });
   }
   function blank(n) {
-    return { id: 'Q' + n, marks: 1, content: '', model: '', feedback: '', starter: '', tags: '', wmin: '', wmax: '', attach: 0, required: true, mode: 'pycopad', lines: 10, notes: false, saveOutput: false };
+    return { id: 'Q' + n, marks: 1, content: '', model: '', feedback: '', starter: '', tags: '', wmin: '', wmax: '', attach: 0, required: true, mode: 'pycopad', lines: 10, notes: false, saveOutput: false, useButtons: false };
   }
   function freshQuestion() {
     var used = {}, n = state.questions.length + 1;
@@ -499,6 +514,7 @@ function previewDoc(q, settings, number) {
         mode: q.mode === 'pycopad' ? 'pycopad' : 'text',
         notes: q.notes === true,
         saveOutput: q.saveOutput === true,
+        useButtons: q.useButtons === true,
         lines: nearestLines(q.lines != null ? q.lines : b.lines)
       };
     });
@@ -653,7 +669,8 @@ function previewDoc(q, settings, number) {
         field('Mode', '', mode),
         field('Answer size', '', size),
         field('Notes tab, saved with the answer', '', onOff(q.notes, function (v) { q.notes = v; })),
-        field('Last output, saved with the answer', '', onOff(q.saveOutput, function (v) { q.saveOutput = v; }))
+        field('Last output, saved with the answer', '', onOff(q.saveOutput, function (v) { q.saveOutput = v; })),
+        field('Use buttons on code blocks (not for code images)', '', onOff(q.useButtons, function (v) { q.useButtons = v; }))
       );
 
       var content = document.createElement('div');
@@ -1034,10 +1051,11 @@ function previewDoc(q, settings, number) {
   // HTML question text -> Markdown, noticing a PycoPad script.
   function htmlToQuestion(html) {
     var doc = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
-    var out = { mode: 'text', strategy: '', origin: '', notes: false, saveOutput: false };
+    var out = { mode: 'text', strategy: '', origin: '', notes: false, saveOutput: false, useButtons: false };
     doc.querySelectorAll('script').forEach(function (s) {
       var src = s.getAttribute('src') || '';
-      if (/pycopad/i.test(src) || s.hasAttribute('data-create-pad')) {
+      if (/\/moodle-pre-decorator\.js$/.test(src)) out.useButtons = true;
+      else if (/pycopad/i.test(src) || s.hasAttribute('data-create-pad')) {
         out.mode = 'pycopad';
         out.strategy = s.getAttribute('data-strategy') || '';
         out.notes = s.getAttribute('data-notes') === 'true';
@@ -1096,7 +1114,7 @@ function previewDoc(q, settings, number) {
         id: id, marks: marks >= 0 ? marks : 1, content: conv.md, model: model, feedback: feedback, starter: starter,
         tags: tags.join(', '), wmin: kidText(el, 'minwordlimit').trim(), wmax: kidText(el, 'maxwordlimit').trim(),
         attach: isNaN(att) ? 0 : att, required: kidText(el, 'responserequired').trim() !== '0',
-        mode: conv.mode, notes: conv.notes === true, saveOutput: conv.saveOutput === true, lines: nearestLines(kidText(el, 'responsefieldlines'))
+        mode: conv.mode, notes: conv.notes === true, saveOutput: conv.saveOutput === true, useButtons: conv.useButtons === true, lines: nearestLines(kidText(el, 'responsefieldlines'))
       });
     }
     res.lossy = lossy;
