@@ -1,4 +1,33 @@
 (function () {
+  // Puts text on the clipboard. The browser refuses navigator.clipboard when the page itself does not have focus, which is the
+  // case while the cursor is in the pad (an iframe), so the copy is first done from a temporary box, and the clipboard call is
+  // the fallback. Focus is given back afterwards. Resolves true only if one of them worked.
+  function copyText(text, returnFocusTo) {
+    let ok = false;
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.setAttribute('readonly', '');
+    box.style.cssText = 'position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none;';
+    try {
+      document.body.appendChild(box);
+      box.focus({ preventScroll: true });
+      box.select();
+      ok = document.execCommand('copy');
+    } catch (err) {
+      ok = false;
+    }
+    box.remove();
+    if (returnFocusTo && returnFocusTo.focus) returnFocusTo.focus();
+    if (ok) return Promise.resolve(true);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true, err => {
+        console.error('[Moodle Decorator] Clipboard failed:', err);
+        return false;
+      });
+    }
+    return Promise.resolve(false);
+  }
+
   function decoratePreTagsInBlock(questionBlock) {
     // Automatically close any <details> tags that might have been saved in an open state by TinyMCE
     questionBlock.querySelectorAll('details').forEach(details => details.removeAttribute('open'));
@@ -46,10 +75,8 @@
         const text = pre.innerText + '\n';
         const activeEl = document.activeElement;
 
-        // 1. Unconditionally write to clipboard
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(text).catch(err => console.error("[Moodle Decorator] Clipboard failed:", err));
-        }
+        // 1. Put it on the clipboard (the cursor's place is given back afterwards)
+        const copied = copyText(text, activeEl);
 
         // 2. Attempt live insertion scoped to this question block
         if (activeEl && activeEl.tagName === 'IFRAME' && questionBlock.contains(activeEl)) {
@@ -65,13 +92,15 @@
             activeEl.value += text;
           }
         }
-        // Visual feedback
-        btn.textContent = 'Copied!';
-        btn.style.background = '#4ec9b0';
-        setTimeout(() => {
-          btn.textContent = 'Use';
-          btn.style.background = '#0e639c';
-        }, 1200);
+        // Visual feedback: only "Copied!" if it really is on the clipboard
+        copied.then(ok => {
+          btn.textContent = ok ? 'Copied!' : 'Not copied';
+          btn.style.background = ok ? '#4ec9b0' : '#c0392b';
+          setTimeout(() => {
+            btn.textContent = 'Use';
+            btn.style.background = '#0e639c';
+          }, 1200);
+        });
 
       });
 
