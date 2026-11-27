@@ -270,14 +270,19 @@ function inlineMd(text) {
 // Raw HTML in the source is shown as text, not passed through.
 // A code image (docs/CODE-IMAGE.md) is the one piece of raw HTML the builder lets through. It is rebuilt from its address and height,
 // so nothing else in the tag (a script, an event handler, another address) can ride along.
-var CODE_IMAGE = /^\s*<iframe\b[^>]*\bsrc="(https?:\/\/[^"\s#]+\/code-image(?:\.html)?#[A-Za-z0-9_\-&=%.]*)"[^>]*>\s*<\/iframe>\s*$/i;
-function codeImageHtml(line) {
+// A relative address (./code-image#...) means the version the question is set to load, so it becomes that address (a question is shown
+// on the Moodle site, where a relative one would point at Moodle). An http address becomes https: the site only answers https, and a secure page blocks the other.
+var CODE_IMAGE = /^\s*<iframe\b[^>]*\bsrc="((?:https?:\/\/[^"\s#]+\/|\.\/)code-image(?:\.html)?#[A-Za-z0-9_\-&=%.]*)"[^>]*>\s*<\/iframe>\s*$/i;
+function codeImageHtml(line, base) {
   var m = CODE_IMAGE.exec(line);
   if (!m) return null;
+  var src = m[1];
+  if (src.indexOf('./') === 0) { if (!base) return null; src = base + '/' + src.slice(2); }
+  else src = src.replace(/^http:\/\/(?!(?:localhost|127\.0\.0\.1)[:\/])/i, 'https://');
   var h = /\bheight="(\d{1,4})"/i.exec(line);
-  return '<iframe src="' + htmlAttr(m[1]) + '" title="Code (image)" width="100%" height="' + (h ? h[1] : '200') + '" style="border:0"></iframe>';
+  return '<iframe src="' + htmlAttr(src) + '" title="Code (image)" width="100%" height="' + (h ? h[1] : '200') + '" style="border:0"></iframe>';
 }
-function mdToHtml(md) {
+function mdToHtml(md, base) {
   var lines = String(md).replace(/\r\n?/g, '\n').split('\n');
   var out = [], para = [], list = null, i = 0;
   function endPara() { if (para.length) { out.push('<p>' + inlineMd(para.join('\n')).replace(/\n/g, '<br>') + '</p>'); para = []; } }
@@ -293,7 +298,7 @@ function mdToHtml(md) {
       out.push('<pre style="' + CODE_BLOCK_STYLE + '">' + htmlText(code.join('\n')) + '</pre>');
       continue;
     }
-    if (codeImageHtml(line)) { endPara(); endList(); out.push(codeImageHtml(line)); i++; continue; }
+    if (codeImageHtml(line, base)) { endPara(); endList(); out.push(codeImageHtml(line, base)); i++; continue; }
     if (/^\s*$/.test(line)) { endPara(); endList(); i++; continue; }
     if ((m = /^(#{1,4})\s+(.*)$/.exec(line))) {
       endPara(); endList();
@@ -348,7 +353,7 @@ function decoratorSnippet(settings) {
   return '<script src="' + htmlAttr(padBase(settings) + '/moodle-pre-decorator.js') + '"><' + '/script>';
 }
 function questionText(q, settings, placeholder) {
-  var html = mdToHtml(q.content || '');
+  var html = mdToHtml(q.content || '', padBase(settings));
   if (!html && placeholder) html = '<p style="color:#6a737d;font-style:italic">Add Question Text &hellip;</p>';
   if (q.mode === 'pycopad') html += (html ? '\n' : '') + pycopadSnippet(settings, q);
   if (q.useButtons) html += (html ? '\n' : '') + decoratorSnippet(settings);

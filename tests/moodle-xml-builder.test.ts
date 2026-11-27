@@ -203,3 +203,30 @@ describe('Use buttons option', () => {
     expect(xml).not.toContain('pycopad-mdl-quiz.js');
   });
 });
+
+describe('code image addresses', () => {
+  const tag = (src: string) => `<iframe src="${src}" title="Code (image)" width="100%" height="130" style="border:0"></iframe>`;
+  const out = (src: string) => `<iframe src="${src}" title="Code (image)" width="100%" height="130" style="border:0"></iframe>`;
+
+  it('turns a relative address into the version the question loads', () => {
+    expect(lib.mdToHtml(tag('./code-image#abc'), 'https://pad.example/v1.1')).toBe(out('https://pad.example/v1.1/code-image#abc'));
+  });
+  it('leaves a relative address as text when there is no version to resolve it against', () => {
+    expect(lib.mdToHtml(tag('./code-image#abc'))).not.toContain('<iframe');
+  });
+  it('uses https for a site address, because the site answers nothing else and a secure page blocks the rest', () => {
+    expect(lib.mdToHtml(tag('http://pad.example/v1.1/code-image#abc'))).toBe(out('https://pad.example/v1.1/code-image#abc'));
+    expect(lib.mdToHtml(tag('HTTP://pad.example/code-image#abc'))).toBe(out('https://pad.example/code-image#abc'));
+  });
+  it('keeps http for a local test site', () => {
+    expect(lib.mdToHtml(tag('http://localhost:5174/code-image.html#abc'))).toBe(out('http://localhost:5174/code-image.html#abc'));
+    expect(lib.mdToHtml(tag('http://127.0.0.1:5174/code-image#abc'))).toBe(out('http://127.0.0.1:5174/code-image#abc'));
+  });
+  it('exports a relative address resolved against the chosen version', () => {
+    const xml = lib.buildXml([q({ content: tag('./code-image#abc') })], { ...settings, version: 'v1.1' });
+    expect(xml).toContain('src="https://pad.example/v1.1/code-image#abc"');
+  });
+  it('does not let a different host that merely starts with localhost keep http', () => {
+    expect(lib.mdToHtml(tag('http://localhost.evil.example/code-image#abc'))).toContain('https://localhost.evil.example/code-image#abc');
+  });
+});
