@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { decode, encode, imageHeight, readHash } from '../src/code-image/format';
+import { decode, encode, imageHeight, readHash, siteFolder } from '../src/code-image/format';
 import { LINE_HEIGHT, PADDING, THEME, draw, measureWidth, toLines } from '../src/code-image/render';
 import { starterCode } from '../src/code-image/starter';
 
@@ -117,5 +117,20 @@ describe('the helper the pad opens with', () => {
   it('has an example to try and ends by printing the iframe', () => {
     expect(code).toContain('for val in range(6)');
     expect(code.trimEnd().endsWith('print(code_image_iframe(CODE, ALT))')).toBe(true);
+  });
+});
+
+describe('the folder the helper writes into the iframe', () => {
+  it('is the folder of the page, without its name, query or #', () => {
+    expect(siteFolder('https://pad.example/v1.1.0/code-image?x=1#abc')).toBe('https://pad.example/v1.1.0');
+    expect(siteFolder('https://pad.example/v1.1.0/code-image.html')).toBe('https://pad.example/v1.1.0');
+  });
+  it('is https even if the page was opened over http, since the site answers nothing else', () => {
+    expect(siteFolder('http://pad.example/v1.1.0/code-image')).toBe('https://pad.example/v1.1.0');
+  });
+  it('keeps http for a local test site, but not for a host that only starts with localhost', () => {
+    expect(siteFolder('http://localhost:5174/code-image.html')).toBe('http://localhost:5174');
+    expect(siteFolder('http://127.0.0.1:5174/code-image.html')).toBe('http://127.0.0.1:5174');
+    expect(siteFolder('http://localhost.evil.example/v1/code-image')).toBe('https://localhost.evil.example/v1');
   });
 });

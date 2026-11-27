@@ -48,6 +48,16 @@
   }
   window.loadLMSWidgetManager = loadLMSWidgetManager;
 
+  // The Use button on each code block of a question (moodle-pre-decorator.js, from the same folder as this script, so the same version).
+  // A question switches it off with data-use-buttons="false" on this script.
+  function loadCodeButtons() {
+    if (window.__pycopadButtonsLoading) return;
+    window.__pycopadButtonsLoading = true;
+    const script = document.createElement('script');
+    script.src = `${defaultBase}/moodle-pre-decorator.js`;
+    document.head.appendChild(script);
+  }
+
 
   // --- STRATEGIES ---
 
@@ -357,6 +367,7 @@
 
     // Ensure the external LMSWidgetManager module is loaded
     loadLMSWidgetManager();
+    loadCodeButtons();
   }
 
   if (document.readyState === 'loading') {

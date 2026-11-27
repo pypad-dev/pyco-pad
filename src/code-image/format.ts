@@ -8,6 +8,17 @@ export function imageHeight(lines: number): number {
   return Math.floor((lines * 224 + 400 + 9) / 10); // lines of 22.4px, with 20px above and below, rounded up
 }
 
+/**
+ * The folder a page is served from, without its file name, query or #. The site only answers https and a secure page blocks the
+ * rest, so an http address is made https (a local test site keeps http).
+ */
+export function siteFolder(href: string): string {
+  return href
+    .replace(/[?#].*$/, '')
+    .replace(/\/[^/]*$/, '')
+    .replace(/^http:\/\/(?!(?:localhost|127\.0\.0\.1)[:/])/i, 'https://');
+}
+
 export function encode(code: string): string {
   let binary = '';
   new TextEncoder().encode(code).forEach((byte) => (binary += String.fromCharCode(byte)));

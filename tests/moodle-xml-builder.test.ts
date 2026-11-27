@@ -185,22 +185,20 @@ describe('code images in the question text', () => {
 });
 
 describe('Use buttons option', () => {
-  it('adds nothing when it is off', () => {
-    expect(lib.buildXml([q()], settings)).not.toContain('moodle-pre-decorator');
+  it('leaves the script plain by default: the quiz script loads the buttons itself', () => {
+    const xml = lib.buildXml([q()], settings);
+    expect(xml).not.toContain('data-use-buttons');
+    expect(xml).not.toContain('moodle-pre-decorator');
   });
 
-  it('adds the decorator script after the pad script, from the same folder', () => {
-    const xml = lib.buildXml([q({ useButtons: true })], { ...settings, version: 'v1.1' });
-    const pad = xml.indexOf('v1.1/pycopad-mdl-quiz.js');
-    const decorator = xml.indexOf('<script src="https://pad.example/v1.1/moodle-pre-decorator.js"></script>');
-    expect(pad).toBeGreaterThan(-1);
-    expect(decorator).toBeGreaterThan(pad);
+  it('switches them off on the script when the option is off', () => {
+    const xml = lib.buildXml([q({ useButtons: false })], settings);
+    expect(xml).toMatch(/<script src="[^"]*pycopad-mdl-quiz\.js" data-create-pad[^>]*data-use-buttons="false"/);
+    expect(xml).not.toContain('moodle-pre-decorator');
   });
 
-  it('works without the pad too, since the button also copies', () => {
-    const xml = lib.buildXml([q({ mode: 'text', useButtons: true })], settings);
-    expect(xml).toContain('moodle-pre-decorator.js');
-    expect(xml).not.toContain('pycopad-mdl-quiz.js');
+  it('never writes the buttons script into the question itself', () => {
+    expect(lib.buildXml([q({ mode: 'text', useButtons: true })], settings)).not.toContain('moodle-pre-decorator');
   });
 });
 
@@ -228,5 +226,31 @@ describe('code image addresses', () => {
   });
   it('does not let a different host that merely starts with localhost keep http', () => {
     expect(lib.mdToHtml(tag('http://localhost.evil.example/code-image#abc'))).toContain('https://localhost.evil.example/code-image#abc');
+  });
+});
+
+describe('code look', () => {
+  const inline = lib.mdToHtml('Use `len(x)` here.');
+  const block = lib.mdToHtml('```\nx = 1\n```');
+
+  it('sets colour, weight and background on inline code itself, so the theme cannot recolour it', () => {
+    expect(inline).toMatch(/<code style="[^"]*color:#000;[^"]*font-weight:500;[^"]*">len\(x\)<\/code>/);
+    expect(inline).toContain('background:#f2f2f2');
+  });
+  it('gives code blocks the same look', () => {
+    expect(block).toMatch(/<pre style="[^"]*color:#000;[^"]*background:#f2f2f2;[^"]*font-weight:500;/);
+  });
+  it('writes it into the exported question', () => {
+    const xml = lib.buildXml([q({ content: 'Use `len(x)`.\n\n```\nx = 1\n```' })], settings);
+    expect(xml.match(/<(code|pre) style="[^"]*color:#000;/g)).toHaveLength(2);
+  });
+});
+
+describe('Lock question text option', () => {
+  it('is off by default and writes nothing', () => {
+    expect(lib.buildXml([q()], settings)).not.toContain('data-lock-text');
+  });
+  it('writes the flag onto the script when on', () => {
+    expect(lib.buildXml([q({ lockText: true })], settings)).toMatch(/pycopad-mdl-quiz\.js" data-create-pad[^>]*data-lock-text="true"/);
   });
 });

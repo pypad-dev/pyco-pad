@@ -1,9 +1,34 @@
 (function () {
-  // Puts text on the clipboard. The browser refuses navigator.clipboard when the page itself does not have focus, which is the
-  // case while the cursor is in the pad (an iframe), so the copy is first done from a temporary box, and the clipboard call is
-  // the fallback. Focus is given back afterwards. Resolves true only if one of them worked.
-  function copyText(text, returnFocusTo) {
+  // Puts the code on the clipboard, trying in turn until one works. Resolves true only if it did.
+  //  1. Ask the browser to copy and give it the text when it fires its copy event. The block is selected for the purpose, and the
+  //     selection is put back; no box, and the focus stays where it is (in the pad, say).
+  //  2. Copy from a temporary box, which takes the focus for a moment and gives it back.
+  //  3. navigator.clipboard, which the browser refuses while the page itself has no focus (the cursor is in the pad's iframe),
+  //     and which does not exist on a page that is not https.
+  function copyText(text, pre, returnFocusTo) {
     let ok = false;
+    const selection = window.getSelection ? window.getSelection() : null;
+    const saved = selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+    const onCopy = (e) => {
+      if (!e.clipboardData) return;
+      e.clipboardData.setData('text/plain', text);
+      e.preventDefault();
+      ok = true;
+    };
+    document.addEventListener('copy', onCopy, true);
+    try {
+      if (selection) selection.selectAllChildren(pre);
+      document.execCommand('copy');
+    } catch (err) {
+      ok = false;
+    }
+    document.removeEventListener('copy', onCopy, true);
+    if (selection) {
+      selection.removeAllRanges();
+      if (saved) selection.addRange(saved);
+    }
+    if (ok) return Promise.resolve(true);
+
     const box = document.createElement('textarea');
     box.value = text;
     box.setAttribute('readonly', '');
@@ -19,6 +44,7 @@
     box.remove();
     if (returnFocusTo && returnFocusTo.focus) returnFocusTo.focus();
     if (ok) return Promise.resolve(true);
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text).then(() => true, err => {
         console.error('[Moodle Decorator] Clipboard failed:', err);
@@ -29,6 +55,8 @@
   }
 
   function decoratePreTagsInBlock(questionBlock) {
+    // A question can switch the buttons off: data-use-buttons="false" on its script
+    if (questionBlock.querySelector('[data-use-buttons="false"]')) return;
     // Automatically close any <details> tags that might have been saved in an open state by TinyMCE
     questionBlock.querySelectorAll('details').forEach(details => details.removeAttribute('open'));
 
@@ -76,7 +104,7 @@
         const activeEl = document.activeElement;
 
         // 1. Put it on the clipboard (the cursor's place is given back afterwards)
-        const copied = copyText(text, activeEl);
+        const copied = copyText(text, pre, activeEl);
 
         // 2. Attempt live insertion scoped to this question block
         if (activeEl && activeEl.tagName === 'IFRAME' && questionBlock.contains(activeEl)) {
@@ -109,12 +137,31 @@
     });
   }
 
+  // Copy policy, set by flags on the question's script (they reach the embed as data attributes):
+  //   data-use-buttons="false"  no Use button on the code blocks (they are on by default)
+  //   data-lock-text="true"     the question text cannot be selected, copied, cut, dragged or opened with the right-click menu
+  // This is a courtesy to the student, not security: scripts can be switched off, and a screenshot still works. For an exam, SEB enforces more.
+  function lockTextInBlock(questionBlock) {
+    if (!questionBlock.querySelector('[data-lock-text="true"]')) return;
+    const text = questionBlock.querySelector('.qtext'); // the text only, never the answer box or the pad
+    if (!text || text.hasAttribute('data-locked')) return;
+    text.setAttribute('data-locked', 'true');
+    text.style.userSelect = 'none';
+    text.style.webkitUserSelect = 'none';
+    ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(type => text.addEventListener(type, e => e.preventDefault()));
+  }
+
+  function applyPolicy(questionBlock) {
+    decoratePreTagsInBlock(questionBlock);
+    lockTextInBlock(questionBlock);
+  }
+
   function init() {
     // 1. If script is placed inside a specific question block, only decorate that block
     const script = document.currentScript;
     const currentBlock = script ? script.closest('.que, .moodle-question, .formulation, form') : null;
     if (currentBlock) {
-      decoratePreTagsInBlock(currentBlock);
+      applyPolicy(currentBlock);
       return;
     }
 
@@ -123,14 +170,14 @@
     if (questionBlocks.length > 0) {
       questionBlocks.forEach(block => {
         if (block.querySelector('.python-ide-embed, iframe[data-lms-widget], iframe')) {
-          decoratePreTagsInBlock(block);
+          applyPolicy(block);
         }
       });
       return;
     }
 
     // 3. Fallback for standalone pages / test snippets
-    decoratePreTagsInBlock(document);
+    applyPolicy(document);
   }
 
   // Run as soon as DOM is ready or immediately if already loaded

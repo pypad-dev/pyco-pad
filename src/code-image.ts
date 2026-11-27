@@ -1,4 +1,4 @@
-import { encode, readHash } from './code-image/format';
+import { encode, readHash, siteFolder } from './code-image/format';
 import { paint, toLines } from './code-image/render';
 import { starterCode } from './code-image/starter';
 
@@ -6,8 +6,7 @@ import { starterCode } from './code-image/starter';
 const payload = readHash(location.hash);
 
 if (payload === null) {
-  const folder = location.href.replace(/[?#].*$/, '').replace(/\/[^/]*$/, '');
-  location.replace('./#b=' + encode(starterCode(folder)));
+  location.replace('./#b=' + encode(starterCode(siteFolder(location.href))));
 } else if (!payload.ok) {
   const message = document.getElementById('message') as HTMLElement;
   message.textContent = 'This code image cannot be read.';

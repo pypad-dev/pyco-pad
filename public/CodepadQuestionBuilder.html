@@ -241,8 +241,11 @@ function htmlAttr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 var CODE_FONT = "font-family:Consolas,Menlo,'Courier New',monospace;";
-var CODE_INLINE_STYLE = CODE_FONT + 'background:#f2f2f2;padding:0 .25em;border-radius:3px;';
-var CODE_BLOCK_STYLE = CODE_FONT + 'white-space:pre;overflow:auto;';
+// Inline code and code blocks look the same everywhere: black, a touch heavier than normal, on grey. Colour, weight and background are in each tag's own style,
+// so they win over the theme (Moodle's Boost makes inline code pink) and the code stays readable on a dark theme too.
+var CODE_LOOK = 'color:#000;background:#f2f2f2;font-weight:500;';
+var CODE_INLINE_STYLE = CODE_FONT + CODE_LOOK + 'padding:0 .25em;border-radius:3px;';
+var CODE_BLOCK_STYLE = CODE_FONT + CODE_LOOK + 'white-space:pre;overflow:auto;padding:8px;border-radius:4px;';
 function htmlText(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -345,18 +348,13 @@ function versionChoices(list) {
 }
 function pycopadSnippet(settings, q) {
   var src = padBase(settings) + '/pycopad-mdl-quiz.js';
-  var options = (q && q.notes ? ' data-notes="true"' : '') + (q && q.saveOutput ? ' data-save-output="true"' : '');
+  var options = (q && q.notes ? ' data-notes="true"' : '') + (q && q.saveOutput ? ' data-save-output="true"' : '') + (q && q.useButtons === false ? ' data-use-buttons="false"' : '') + (q && q.lockText ? ' data-lock-text="true"' : '');
   return '<script src="' + htmlAttr(src) + '" data-create-pad data-strategy="' + htmlAttr(settings.strategy) + '"' + options + '><' + '/script>';
-}
-// The script that puts a Use button on each code block (it copies the code and inserts it into the pad). It goes last, so the blocks above it exist.
-function decoratorSnippet(settings) {
-  return '<script src="' + htmlAttr(padBase(settings) + '/moodle-pre-decorator.js') + '"><' + '/script>';
 }
 function questionText(q, settings, placeholder) {
   var html = mdToHtml(q.content || '', padBase(settings));
   if (!html && placeholder) html = '<p style="color:#6a737d;font-style:italic">Add Question Text &hellip;</p>';
   if (q.mode === 'pycopad') html += (html ? '\n' : '') + pycopadSnippet(settings, q);
-  if (q.useButtons) html += (html ? '\n' : '') + decoratorSnippet(settings);
   return html;
 }
 function validate(questions) {
@@ -432,7 +430,7 @@ function questionCss(scope) {
     S + '.info h3{margin:0 0 2px;font-size:1rem}',
     S + '.content{flex:1;min-width:0}',
     S + '.formulation{background:#def2f8;border:1px solid #bfd7e0;border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box}',
-    S + '.qtext{margin:0}.qtext p{margin:0 0 .6em}.qtext pre{background:#f5f5f5;border:1px solid #ccc;border-radius:4px;padding:8px;overflow:auto}',
+    S + '.qtext{margin:0}.qtext p{margin:0 0 .6em}.qtext pre{border:1px solid #ccc;overflow:auto}.qtext code{color:#e83e8c}',
     S + '.field{display:flex;flex-direction:column;gap:1px;flex:none;min-width:0}',
     S + 'label,' + S + '.cap{font-size:.75rem;color:#4a5560;display:block}',
     S + 'input,' + S + 'select,' + S + 'textarea{background:#fff;color:#1d2125;border:1px solid #9fb4bd;border-radius:6px;padding:3px 6px;font:inherit;width:100%;box-sizing:border-box}',
@@ -482,7 +480,7 @@ function previewDoc(q, settings, number) {
     return LINE_OPTIONS.reduce(function (best, o) { return Math.abs(o - v) < Math.abs(best - v) ? o : best; });
   }
   function blank(n) {
-    return { id: 'Q' + n, marks: 1, content: '', model: '', feedback: '', starter: '', tags: '', wmin: '', wmax: '', attach: 0, required: true, mode: 'pycopad', lines: 10, notes: false, saveOutput: false, useButtons: false };
+    return { id: 'Q' + n, marks: 1, content: '', model: '', feedback: '', starter: '', tags: '', wmin: '', wmax: '', attach: 0, required: true, mode: 'pycopad', lines: 10, notes: false, saveOutput: false, useButtons: true, lockText: false };
   }
   function freshQuestion() {
     var used = {}, n = state.questions.length + 1;
@@ -519,7 +517,8 @@ function previewDoc(q, settings, number) {
         mode: q.mode === 'pycopad' ? 'pycopad' : 'text',
         notes: q.notes === true,
         saveOutput: q.saveOutput === true,
-        useButtons: q.useButtons === true,
+        useButtons: q.useButtons !== false,
+        lockText: q.lockText === true,
         lines: nearestLines(q.lines != null ? q.lines : b.lines)
       };
     });
@@ -675,7 +674,8 @@ function previewDoc(q, settings, number) {
         field('Answer size', '', size),
         field('Notes tab, saved with the answer', '', onOff(q.notes, function (v) { q.notes = v; })),
         field('Last output, saved with the answer', '', onOff(q.saveOutput, function (v) { q.saveOutput = v; })),
-        field('Use buttons on code blocks (not for code images)', '', onOff(q.useButtons, function (v) { q.useButtons = v; }))
+        field('Use buttons on code blocks (off for code images)', '', onOff(q.useButtons, function (v) { q.useButtons = v; })),
+        field('Lock question text: no selecting or copying', '', onOff(q.lockText, function (v) { q.lockText = v; }))
       );
 
       var content = document.createElement('div');
@@ -1056,15 +1056,16 @@ function previewDoc(q, settings, number) {
   // HTML question text -> Markdown, noticing a PycoPad script.
   function htmlToQuestion(html) {
     var doc = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
-    var out = { mode: 'text', strategy: '', origin: '', notes: false, saveOutput: false, useButtons: false };
+    var out = { mode: 'text', strategy: '', origin: '', notes: false, saveOutput: false, useButtons: true, lockText: false };
     doc.querySelectorAll('script').forEach(function (s) {
       var src = s.getAttribute('src') || '';
-      if (/\/moodle-pre-decorator\.js$/.test(src)) out.useButtons = true;
-      else if (/pycopad/i.test(src) || s.hasAttribute('data-create-pad')) {
+      if (/pycopad/i.test(src) || s.hasAttribute('data-create-pad')) {
         out.mode = 'pycopad';
         out.strategy = s.getAttribute('data-strategy') || '';
         out.notes = s.getAttribute('data-notes') === 'true';
         out.saveOutput = s.getAttribute('data-save-output') === 'true';
+        out.useButtons = s.getAttribute('data-use-buttons') !== 'false';
+        out.lockText = s.getAttribute('data-lock-text') === 'true';
         var where = splitPadSrc(src);
         if (where.origin) { out.origin = where.origin; out.version = where.version; }
       }
@@ -1119,7 +1120,7 @@ function previewDoc(q, settings, number) {
         id: id, marks: marks >= 0 ? marks : 1, content: conv.md, model: model, feedback: feedback, starter: starter,
         tags: tags.join(', '), wmin: kidText(el, 'minwordlimit').trim(), wmax: kidText(el, 'maxwordlimit').trim(),
         attach: isNaN(att) ? 0 : att, required: kidText(el, 'responserequired').trim() !== '0',
-        mode: conv.mode, notes: conv.notes === true, saveOutput: conv.saveOutput === true, useButtons: conv.useButtons === true, lines: nearestLines(kidText(el, 'responsefieldlines'))
+        mode: conv.mode, notes: conv.notes === true, saveOutput: conv.saveOutput === true, useButtons: conv.useButtons !== false, lockText: conv.lockText === true, lines: nearestLines(kidText(el, 'responsefieldlines'))
       });
     }
     res.lossy = lossy;
